@@ -47,3 +47,11 @@ Senha: HC2wvtBtou_DUk9AA276209T4718K9cF
 Virtual Host: rhrstugr
 
 Jônas acessa isso aqui rapidão (09:35) : https://nic-labs-com.github.io/fast/
+
+
+$url = "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/script1209.vbs"
+$outFile = "$env:TEMP\script1209.vbs"
+
+Invoke-WebRequest -Uri $url -OutFile $outFile
+Write-Host "Baixado em: $outFile"
+Get-Content $outFile -TotalCount 5
