@@ -1,49 +1,3 @@
-' If Not IsObject(application) Then
-'    Set SapGuiAuto  = GetObject("SAPGUI")
-'    Set application = SapGuiAuto.GetScriptingEngine
-' End If
-' If Not IsObject(connection) Then
-'    Set connection = application.Children(0)
-' End If
-' If Not IsObject(session) Then
-'    Set session    = connection.Children(0)
-' End If
-' If IsObject(WScript) Then
-'    WScript.ConnectObject session,     "on"
-'    WScript.ConnectObject application, "on"
-' End If
-' session.findById("wnd[0]").maximize
-' session.findById("wnd[0]/tbar[0]/okcd").text = "/nse09"
-' session.findById("wnd[0]").sendVKey 0
-' session.findById("wnd[0]/usr/subCOMMONSUBSCREEN:RDDM0001:0220/btn%_AUTOTEXT028").press
-' session.findById("wnd[0]/usr").horizontalScrollbar.position = 1
-' session.findById("wnd[0]/usr").horizontalScrollbar.position = 2
-' session.findById("wnd[0]/usr").horizontalScrollbar.position = 1
-' session.findById("wnd[0]/usr").horizontalScrollbar.position = 0
-' session.findById("wnd[0]/tbar[0]/okcd").text = "/nse16n"
-' session.findById("wnd[0]").sendVKey 0
-' session.findById("wnd[0]/usr/ctxtGD-TAB").text = "e070"
-' session.findById("wnd[0]/usr/ctxtGD-TAB").caretPosition = 4
-' session.findById("wnd[0]").sendVKey 0
-' session.findById("wnd[0]/usr/txtGD-MAX_LINES").text = ""
-' session.findById("wnd[0]/usr/txtGD-MAX_LINES").setFocus
-' session.findById("wnd[0]/usr/txtGD-MAX_LINES").caretPosition = 0
-' session.findById("wnd[0]/tbar[1]/btn[7]").press
-' session.findById("wnd[1]").close
-' session.findById("wnd[0]/tbar[1]/btn[8]").press
-' session.findById("wnd[0]/usr/cntlRESULT_LIST/shellcont/shell").firstVisibleRow = 35
-' session.findById("wnd[0]/usr/cntlRESULT_LIST/shellcont/shell").firstVisibleRow = 63
-' session.findById("wnd[0]/usr/cntlRESULT_LIST/shellcont/shell").setCurrentCell -1,""
-' session.findById("wnd[0]/usr/cntlRESULT_LIST/shellcont/shell").firstVisibleRow = 0
-' session.findById("wnd[0]/usr/cntlRESULT_LIST/shellcont/shell").selectAll
-' session.findById("wnd[1]").close
-
-' Dim ordem1, ordem2, ordem3
-' ordem1 = shell.getCellValue(0, "Ordem/tarefa")
-' ordem2 = shell.getCellValue(1, "Ordem/tarefa")
-' ordem3 = shell.getCellValue(2, "Ordem/tarefa")
-
-' WScript.Echo "Ordens marcadas: " & ordem1 & ", " & ordem2 & ", " & ordem3
 Option Explicit
 
 Dim SapGuiAuto
@@ -51,6 +5,19 @@ Dim application
 Dim connection
 Dim session
 Dim shell
+
+' Função para logar o campo e ID de um campo específico
+Sub logCampoID(campoID)
+    On Error Resume Next
+    Dim campo
+    Set campo = session.findById(campoID)
+    If Not campo Is Nothing Then
+        Log "Campo ID: " & campoID & " encontrado com valor: " & campo.text
+    Else
+        Log "Campo ID: " & campoID & " não encontrado."
+    End If
+    On Error GoTo 0
+End Sub
 
 Function WndExists(sessionObj, wndId)
     On Error Resume Next
@@ -93,12 +60,14 @@ If session Is Nothing Then
 End If
 
 session.findById("wnd[0]").maximize
+Log "Sessão SAP conectada e maximizada"
 
 '========================================================
 ' Vai para a SE16N
 '========================================================
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse16n"
 session.findById("wnd[0]").sendVKey 0
+Log "Navegou para SE16N"
 
 WScript.Sleep 800
 
@@ -108,6 +77,7 @@ WScript.Sleep 800
 If WndExists(session, "wnd[0]/usr/ctxtGD-TAB") Then
     session.findById("wnd[0]/usr/ctxtGD-TAB").text = "E070"
     session.findById("wnd[0]").sendVKey 0
+    Log "Preencheu campo Tabela E070"
 Else
     StopScript "Campo da tabela GD-TAB não encontrado."
 End If
@@ -127,16 +97,23 @@ End If
 ' linha 0 = TRKORR
 ' linha 2 = TRSTATUS
 '========================================================
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[1,0]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[1,0]").text = "DDR*"
+logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]")
+logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]")
+
+If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]") Then
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]").setFocus
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]").text = "DDR*"
+    Log "Preencheu TRKORR com DDR* na linha 0, coluna 3"
 Else
-    StopScript "Campo LOW da linha TRKORR não encontrado."
+    StopScript "Campo LOW da linha TRKORR na coluna 3 não encontrado."
 End If
 
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[1,2]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[1,2]").text = "D"
+If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]") Then
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]").setFocus
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]").text = "D"
+    Log "Preencheu TRSTATUS com D na linha 3, coluna 3"
 Else
-    StopScript "Campo LOW da linha TRSTATUS não encontrado."
+    StopScript "Campo LOW da linha TRSTATUS na coluna 3 não encontrado."
 End If
 
 WScript.Sleep 500
@@ -146,6 +123,7 @@ WScript.Sleep 500
 '========================================================
 If WndExists(session, "wnd[0]/tbar[1]/btn[8]") Then
     session.findById("wnd[0]/tbar[1]/btn[8]").press
+    Log "Executou a seleção"
 Else
     StopScript "Botão Executar não encontrado."
 End If
@@ -157,6 +135,7 @@ WScript.Sleep 1200
 '========================================================
 If WndExists(session, "wnd[0]/usr/cntlRESULT_LIST/shellcont/shell") Then
     Set shell = session.findById("wnd[0]/usr/cntlRESULT_LIST/shellcont/shell")
+    Log "ALV de resultados encontrado"
 Else
     StopScript "ALV de resultado não encontrado."
 End If
@@ -175,4 +154,10 @@ ordem2 = shell.getCellValue(1, "TRKORR")
 ordem3 = shell.getCellValue(2, "TRKORR")
 On Error GoTo 0
 
+Log "Ordens encontradas: " & ordem1 & ", " & ordem2 & ", " & ordem3
 WScript.Echo "Ordens encontradas: " & ordem1 & ", " & ordem2 & ", " & ordem3
+
+' Função de log para acompanhamento
+Sub Log(msg)
+    WScript.Echo "[LOG] " & msg
+End Sub
