@@ -6,3 +6,6 @@ https://humble-orbit-xxp95jxv5g9c5j5-3000.app.github.dev/
 
 
 https://jackal.rmq.cloudamqp.com/
+rhrstugr:HC2wvtBtou_DUk9AA276209T4718K9cF
+
+usuário:senha
