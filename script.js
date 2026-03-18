@@ -12,7 +12,7 @@ async function exibirRespostaEmCode() {
 
 		if (!response.ok) {
 			throw new Error(`Falha na requisição: ${response.status} ${response.statusText}`);
-		}
+		} 
 
 		const resultado = await response.text();
 		code.textContent = resultado;
