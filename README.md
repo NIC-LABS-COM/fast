@@ -26,3 +26,9 @@ Invoke-WebRequest -Uri "https://jackal.rmq.cloudamqp.com/api/exchanges/rhrstugr/
 Ler a mensagem da fila (confirmar que chegou):
 
 Invoke-WebRequest -Uri "https://jackal.rmq.cloudamqp.com/api/queues/rhrstugr/fila-teste/get" -Method Post -Headers @{Authorization = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("rhrstugr:HC2wvtBtou_DUk9AA276209T4718K9cF")); "Content-Type" = "application/json"} -Body '{"count":1,"ackmode":"ack_requeue_false","encoding":"auto"}' -UseBasicParsing -TimeoutSec 10
+
+
+
+
+
+Jônas acessa isso aqui rapidão (09:35) : https://nic-labs-com.github.io/fast/
