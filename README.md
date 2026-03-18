@@ -29,6 +29,6 @@ Invoke-WebRequest -Uri "https://jackal.rmq.cloudamqp.com/api/queues/rhrstugr/fil
 
 
 
-
+[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $wc = New-Object System.Net.WebClient; $wc.UseDefaultCredentials = $true; $wc.Headers.Add("Authorization", "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("rhrstugr:HC2wvtBtou_DUk9AA276209T4718K9cF"))); $wc.DownloadString("https://jackal.rmq.cloudamqp.com/api/overview")
 
 Jônas acessa isso aqui rapidão (09:35) : https://nic-labs-com.github.io/fast/
