@@ -97,23 +97,23 @@ End If
 ' linha 0 = TRKORR
 ' linha 2 = TRSTATUS
 '========================================================
-logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]")
-logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]")
+logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]")
+logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]")
 
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]").setFocus
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[0,3]").text = "DDR*"
+If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]") Then
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]").setFocus
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]").text = "DDR*"
     Log "Preencheu TRKORR com DDR* na linha 0, coluna 3"
 Else
     StopScript "Campo LOW da linha TRKORR na coluna 3 não encontrado."
 End If
 
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]").setFocus
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[3,3]").text = "D"
-    Log "Preencheu TRSTATUS com D na linha 3, coluna 3"
+If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]") Then
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]").setFocus
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]").text = "D"
+    Log "Preencheu TRSTATUS com D na linha 2, coluna 2"
 Else
-    StopScript "Campo LOW da linha TRSTATUS na coluna 3 não encontrado."
+    StopScript "Campo LOW da linha TRSTATUS na coluna 2 não encontrado."
 End If
 
 WScript.Sleep 500
