@@ -33,4 +33,17 @@ Invoke-WebRequest -Uri "https://jackal.rmq.cloudamqp.com/api/queues/rhrstugr/fil
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri "https://jackal.rmq.cloudamqp.com/api/overview" -Headers @{Authorization = "Basic " + [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("rhrstugr:HC2wvtBtou_DUk9AA276209T4718K9cF"))} -UseBasicParsing -UseDefaultCredentials -TimeoutSec 10
 
+$tcp = New-Object System.Net.Sockets.TcpClient; $tcp.Connect("jackal.rmq.cloudamqp.com", 5671); Write-Host "Conectado:" $tcp.Connected; $tcp.Close()
+```
+
+Se voltar **`Conectado: True`**, está 100% confirmado que o .exe Python vai funcionar via AMQPS.
+
+E pra já adiantar, a connection string que o seu chefe passou se traduz assim para o `pika`:
+```
+Host: jackal.rmq.cloudamqp.com
+Porta: 5671 (com SSL)
+Usuário: rhrstugr
+Senha: HC2wvtBtou_DUk9AA276209T4718K9cF
+Virtual Host: rhrstugr
+
 Jônas acessa isso aqui rapidão (09:35) : https://nic-labs-com.github.io/fast/
