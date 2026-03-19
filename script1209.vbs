@@ -105,19 +105,19 @@ End If
 'Else
  '   StopScript "Campo LOW da linha TRKORR na coluna 0 não encontrado."
 'End If
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,1]") Then
+'If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,1]") Then
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]").text = "k"
     Log "Preencheu TRFUNCTION com D na linha 2, coluna 2"
-Else
-    StopScript "Campo LOW da linha tipo na coluna 2 não encontrado."
-End If
+'Else
+    'StopScript "Campo LOW da linha tipo na coluna 2 não encontrado."
+'End If
 
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]") Then
+'If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]") Then
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]").text = "D"
-    Log "Preencheu TRSTATUS com D na linha 2, coluna 2"
-Else
-    StopScript "Campo LOW da linha TRSTATUS na coluna 2 não encontrado."
-End If
+    'Log "Preencheu TRSTATUS com D na linha 2, coluna 2"
+'Else
+   ' StopScript "Campo LOW da linha TRSTATUS na coluna 2 não encontrado."
+'End If
 
 
 
