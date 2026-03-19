@@ -108,6 +108,8 @@ End If
 
 If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]") Then
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS__SELFIELDS-LOW[2,2]").setFocus
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS__SELFIELDS-LOW[2,2]").caretPostion = 0
+    session.findById("wnd[0]").sendVKey 4
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]").text = "D"
     Log "Preencheu TRSTATUS com D na linha 2, coluna 2"
 Else
