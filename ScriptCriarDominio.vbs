@@ -1,4 +1,4 @@
-﻿' If Not IsObject(application) Then
+' If Not IsObject(application) Then
 '    Set SapGuiAuto  = GetObject("SAPGUI")
 '    Set application = SapGuiAuto.GetScriptingEngine
 ' End If
