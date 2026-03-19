@@ -106,7 +106,7 @@ End If
  '   StopScript "Campo LOW da linha TRKORR na coluna 0 não encontrado."
 'End If
 'If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,1]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]").text = "k"
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,1]").text = "k"
     Log "Preencheu TRFUNCTION com D na linha 2, coluna 2"
 'Else
     'StopScript "Campo LOW da linha tipo na coluna 2 não encontrado."
