@@ -98,12 +98,18 @@ End If
 ' linha 2 = TRSTATUS
 
 
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]").setFocus
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]").text = "DDR*"
-    Log "Preencheu TRKORR com DDR* na linha 2, coluna 0"
+'If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]") Then
+ '   session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]").setFocus
+  '  session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]").text = "DDR*"
+   ' Log "Preencheu TRKORR com DDR* na linha 2, coluna 0"
+'Else
+ '   StopScript "Campo LOW da linha TRKORR na coluna 0 não encontrado."
+'End If
+If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,1]") Then
+    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]").text = "k"
+    Log "Preencheu TRFUNCTION com D na linha 2, coluna 2"
 Else
-    StopScript "Campo LOW da linha TRKORR na coluna 0 não encontrado."
+    StopScript "Campo LOW da linha tipo na coluna 2 não encontrado."
 End If
 
 If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]") Then
@@ -113,12 +119,7 @@ Else
     StopScript "Campo LOW da linha TRSTATUS na coluna 2 não encontrado."
 End If
 
-If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,1]") Then
-    session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,2]").text = "k"
-    Log "Preencheu TRFUNCTION com D na linha 2, coluna 2"
-Else
-    StopScript "Campo LOW da linha tipo na coluna 2 não encontrado."
-End If
+
 
 WScript.Sleep 500
 
