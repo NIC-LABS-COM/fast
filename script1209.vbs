@@ -97,15 +97,15 @@ End If
 ' linha 0 = TRKORR
 ' linha 2 = TRSTATUS
 '========================================================
-logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]")
-logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]")
+logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]") ' TRKORR
+logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]") ' TRSTATUS
 
 If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]") Then
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]").setFocus
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]").text = "DDR*"
-    Log "Preencheu TRKORR com DDR* na linha 0, coluna 3"
+    Log "Preencheu TRKORR com DDR* na linha 2, coluna 0"
 Else
-    StopScript "Campo LOW da linha TRKORR na coluna 3 não encontrado."
+    StopScript "Campo LOW da linha TRKORR na coluna 0 não encontrado."
 End If
 
 If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]") Then
