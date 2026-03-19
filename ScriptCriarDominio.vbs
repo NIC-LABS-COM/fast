@@ -13,8 +13,8 @@
 '    WScript.ConnectObject application, "on"
 ' End If
 
- Dim domainName
- Dim domainText
+Dim domainName
+Dim domainText
 Dim dataType
 Dim dataLength
 Dim packageName
