@@ -96,9 +96,7 @@ End If
 ' Pela sua tela:
 ' linha 0 = TRKORR
 ' linha 2 = TRSTATUS
-'========================================================
-logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,0]") ' TRKORR
-logCampoID("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SE16N_SELFIELDS-LOW[2,2]") ' TRSTATUS
+
 
 If WndExists(session, "wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]") Then
     session.findById("wnd[0]/usr/tblSAPLSE16NSELFIELDS_TC/ctxtGS_SELFIELDS-LOW[2,0]").setFocus
