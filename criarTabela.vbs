@@ -109,5 +109,3 @@ WScript.Sleep 500 ' Espera para garantir que o campo foi preenchido
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/chkDD03D-KEYFLAG[1,0]").selected = True
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/chkDD03D-KEYFLAG[1,0]").caretPosition = 5
 WScript.Sleep 500 ' Espera para garantir que o campo foi modificado
-
-' Continuar preenchendo os campos conforme necessário...
