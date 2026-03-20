@@ -73,7 +73,7 @@ session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/
 WScript.Sleep 500 ' Espera para garantir que o campo foi modificado
 
 ' Selecionar outra aba
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF").select
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabDEF").select
 WScript.Sleep 500 ' Espera para garantir que a aba foi selecionada
 
 ' Preencher o campo de texto
@@ -81,7 +81,7 @@ session.findById("wnd[0]/usr/textDD02D-DDTEXT").text = tableText
 session.findById("wnd[0]/usr/textDD02D-DDTEXT").caretPosition = 12
 WScript.Sleep 500 ' Espera para garantir que o campo foi preenchido
 
-' Finalizar com a seleção das abas
+' Selecionar as abas finais
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabDEF").select
 WScript.Sleep 500 ' Espera para garantir que a aba foi selecionada
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpF4V").select
@@ -90,3 +90,24 @@ session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF").select
 WScript.Sleep 500 ' Espera para garantir que a aba foi selecionada
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpHEAD").select
 WScript.Sleep 500 ' Espera para garantir que a aba foi selecionada
+
+' Interações adicionais com os campos de texto e botões
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").text = "A"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 5
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 5
+
+' Campos adicionais
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,0]").text = "mandt"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,0]").caretPosition = 5
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[1,0]").text = "mandt"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[1,0]").caretPosition = 5
+WScript.Sleep 500 ' Espera para garantir que o campo foi preenchido
+
+' Interações com os checkboxes
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/chkDD03D-KEYFLAG[1,0]").selected = True
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/chkDD03D-KEYFLAG[1,0]").caretPosition = 5
+WScript.Sleep 500 ' Espera para garantir que o campo foi modificado
+
+' Continuar preenchendo os campos conforme necessário...
