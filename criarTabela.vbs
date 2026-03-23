@@ -159,6 +159,9 @@ session.findById("wnd[0]/tbar[0]/okcd").text = "/NSE11"
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 1000
 
+session.findById("wnd[0]/usr/radRSRD1-TBMA").setFocus
+session.findById("wnd[0]/usr/radRSRD1-TBMA").select
+WScript.Sleep 500
 ' ------------------------------------------------------------
 ' Cria tabela
 ' ------------------------------------------------------------
