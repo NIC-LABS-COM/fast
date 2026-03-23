@@ -101,3 +101,69 @@ session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/cmbDD02D-MAINFLAG").key = "X"
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 500
+
+'=============================
+session.findById("wnd[0]").maximize
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF").select
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,0]").text = "MANDT"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,0]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,0]").caretPosition = 5
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/chkDD03P-KEYFLAG[1,0]").selected = true
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/chkDD03P-NOTNULL[2,0]").selected = true
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,0]").text = "MANDT"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,0]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,0]").caretPosition = 5
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,1]").text = "CNPJ"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,1]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,1]").caretPosition = 4
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/chkDD03P-NOTNULL[2,1]").selected = true
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,1]").text = "Z_MM_CNPJ"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,1]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,1]").caretPosition = 9
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0").columns.elementAt(0).width = 16
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,2]").text = "LIMITE_CRED"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,2]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0,2]").caretPosition = 11
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,2]").text = "Z_MM_LIMITE"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,2]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLSD41:2201/tblSAPLSD41TC0/ctxtDD03D-ROLLNAME[3,2]").caretPosition = 11
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF").select
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLSD41:2103/tblSAPLSD41TC0/txtDD03P_D-REFTABLE[3,2]").text = "TCURC"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLSD41:2103/tblSAPLSD41TC0/txtDD03P_D-REFTABLE[3,2]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLSD41:2103/tblSAPLSD41TC0/txtDD03P_D-REFTABLE[3,2]").caretPosition = 5
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLSD41:2103/tblSAPLSD41TC0/txtDD03P_D-REFFIELD[4,2]").text = "WAERS"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLSD41:2103/tblSAPLSD41TC0/txtDD03P_D-REFFIELD[4,2]").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLSD41:2103/tblSAPLSD41TC0/txtDD03P_D-REFFIELD[4,2]").caretPosition = 5
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/tbar[1]/btn[27]").press
+session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").text = "$TMP"
+session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").caretPosition = 4
+session.findById("wnd[1]/tbar[0]/btn[7]").press
+
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").text = "APPL0"
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").caretPosition = 5
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").text = "3"
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").setFocus
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").caretPosition = 1
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/tbar[0]/btn[11]").press
+session.findById("wnd[0]/tbar[0]/btn[3]").press
