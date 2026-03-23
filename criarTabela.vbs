@@ -60,17 +60,44 @@ session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").text = tableName
 session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").caretPosition = Len(tableName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
 
+On Error Resume Next
+session.findById("wnd[1]").sendVKey 0
+Err.Clear
+On Error GoTo 0
+
+' ------------------------------------------------------------
+' Cabecalho inicial
+' ------------------------------------------------------------
+On Error Resume Next
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
+If Err.Number <> 0 Then
+   Err.Clear
+   session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/txtDD02D-DDTEXT").text = tableText
+End If
+On Error GoTo 0
+WScript.Sleep 300
 
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").setFocus
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").key = "X"
-
-session.findById("wnd[0]").sendVKey 4
-
-session.findById("wnd[1]/usr/lbl[3,3]").setFocus
-session.findById("wnd[1]/usr/lbl[3,3]").caretPosition = 1
-session.findById("wnd[1]").sendVKey 2
-
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").text = "A"
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 1
+On Error Resume Next
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/ctxtDD02D-CONTFLAG").text = "A"
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/ctxtDD02D-CONTFLAG").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/ctxtDD02D-CONTFLAG").caretPosition = 1
 session.findById("wnd[0]").sendVKey 0
+
+If Err.Number <> 0 Then
+   Err.Clear
+   session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/ctxtDD02D-CONTFLAG").setFocus
+   session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/ctxtDD02D-CONTFLAG").caretPosition = 0
+   session.findById("wnd[0]").sendVKey 4
+   WScript.Sleep 800
+
+   session.findById("wnd[1]/usr/cntlCUSTOM_CONTAINER/shellcont/shell").currentCellColumn = "_TEXT"
+   session.findById("wnd[1]/usr/cntlCUSTOM_CONTAINER/shellcont/shell").selectedRows = "0"
+   session.findById("wnd[1]/usr/cntlCUSTOM_CONTAINER/shellcont/shell").doubleClickCurrentCell
+End If
+On Error GoTo 0
+WScript.Sleep 500
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/cmbDD02D-MAINFLAG").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLSD41:2202/cmbDD02D-MAINFLAG").key = "X"
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
