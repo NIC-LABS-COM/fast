@@ -1,20 +1,17 @@
-' ============================================================
-' ScriptCriarElemento.vbs
-' Cria um Elemento de Dados no SAP via SE11
-' Recebe argumentos:
-'   elementName, elementText, domainName, packageName, requestId
-'
-' Regras:
-' - Se packageName = "$TMP", objeto local e nao usa request
-' - Se packageName <> "$TMP", requestId passa a ser obrigatorio
-' ============================================================
-
-Option Explicit
-
-Dim application
-Dim connection
-Dim session
-Dim SapGuiAuto
+If Not IsObject(application) Then
+   Set SapGuiAuto  = GetObject("SAPGUI")
+   Set application = SapGuiAuto.GetScriptingEngine
+End If
+If Not IsObject(connection) Then
+   Set connection = application.Children(0)
+End If
+If Not IsObject(session) Then
+   Set session    = connection.Children(0)
+End If
+If IsObject(WScript) Then
+   WScript.ConnectObject session,     "on"
+   WScript.ConnectObject application, "on"
+End If
 
 Dim elementName
 Dim elementText
@@ -22,14 +19,12 @@ Dim domainName
 Dim packageName
 Dim requestId
 
-' --- Valores padrao ---
 elementName = "Z_MM_CNPJ10"
 elementText = "CNPJ"
 domainName  = "Z_MM_CNPJ"
 packageName = "$TMP"
 requestId   = ""
 
-' --- Recebe argumentos da linha de comando ---
 If WScript.Arguments.Count >= 1 Then
    If Trim(CStr(WScript.Arguments(0))) <> "" Then
       elementName = CStr(WScript.Arguments(0))
@@ -60,175 +55,32 @@ If WScript.Arguments.Count >= 5 Then
    End If
 End If
 
-' --- Funcao para esperar elemento carregar ---
-Function EsperarElemento(strId)
-   Dim obj, t
-   Set obj = Nothing
-
-   For t = 1 To 10
-      On Error Resume Next
-      Set obj = session.findById(strId)
-      On Error GoTo 0
-
-      If Not obj Is Nothing Then
-         Set EsperarElemento = obj
-         Exit Function
-      End If
-
-      WScript.Sleep 1000
-   Next
-
-   Set EsperarElemento = Nothing
-End Function
-
-' --- Conecta ao SAP GUI ---
-If Not IsObject(application) Then
-   Set SapGuiAuto = GetObject("SAPGUI")
-   Set application = SapGuiAuto.GetScriptingEngine
-End If
-
-If Not IsObject(connection) Then
-   Set connection = application.Children(0)
-End If
-
-If Not IsObject(session) Then
-   Set session = connection.Children(0)
-End If
-
-If IsObject(WScript) Then
-   WScript.ConnectObject session, "on"
-   WScript.ConnectObject application, "on"
-End If
-
-' --- Navega para SE11 ---
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse11"
 session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 1000
-
-' --- Preenche nome do elemento de dados e clica Criar ---
-Dim campoElemento
-Set campoElemento = EsperarElemento("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL")
-If campoElemento Is Nothing Then
-   WScript.Echo "Erro: campo do elemento de dados nao carregou."
-   WScript.Quit 1
-End If
-
-campoElemento.text = elementName
-campoElemento.caretPosition = Len(elementName)
-
+session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").text = elementName
+session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").caretPosition = Len(elementName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
-WScript.Sleep 1000
-
-' --- Confirma popup inicial, se existir ---
-On Error Resume Next
 session.findById("wnd[1]/tbar[0]/btn[0]").press
-On Error GoTo 0
-WScript.Sleep 500
-
-' --- Preenche descricao ---
-Dim campoTexto
-Set campoTexto = EsperarElemento("wnd[0]/usr/txtDD04D-DDTEXT")
-If campoTexto Is Nothing Then
-   WScript.Echo "Erro: tela de manutencao do elemento nao carregou."
-   WScript.Quit 1
-End If
-
-campoTexto.text = elementText
-campoTexto.caretPosition = Len(elementText)
-WScript.Sleep 300
-
-' --- Preenche dominio ---
-Dim campoDominio
-Set campoDominio = EsperarElemento("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME")
-If campoDominio Is Nothing Then
-   WScript.Echo "Erro: campo de dominio nao foi encontrado."
-   WScript.Quit 1
-End If
-
-campoDominio.text = domainName
-campoDominio.setFocus
-campoDominio.caretPosition = Len(domainName)
-WScript.Sleep 300
-
-' --- Aba de textos ---
+session.findById("wnd[0]/usr/txtDD04D-DDTEXT").text = elementText
+session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").text = domainName
+session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").setFocus
+session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").caretPosition = Len(domainName)
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT").select
-WScript.Sleep 300
-
-Dim campoShort
-Dim campoMedium
-Dim campoLong
-Dim campoReport
-
-Set campoShort  = EsperarElemento("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_S")
-Set campoMedium = EsperarElemento("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_M")
-Set campoLong   = EsperarElemento("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_L")
-Set campoReport = EsperarElemento("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT")
-
-If campoShort Is Nothing Or campoMedium Is Nothing Or campoLong Is Nothing Or campoReport Is Nothing Then
-   WScript.Echo "Erro: campos de texto do elemento nao foram encontrados."
-   WScript.Quit 1
-End If
-
-campoShort.text  = elementText
-campoMedium.text = elementText
-campoLong.text   = elementText
-campoReport.text = elementText
-campoReport.setFocus
-campoReport.caretPosition = Len(elementText)
-WScript.Sleep 300
-
-' --- Salvar ---
+session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_S").text = elementText
+session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_M").text = elementText
+session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_L").text = elementText
+session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT").text = elementText
+session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT").setFocus
+session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT").caretPosition = Len(elementText)
 session.findById("wnd[0]/tbar[0]/btn[11]").press
-WScript.Sleep 1000
+session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").text = packageName
+session.findById("wnd[1]/tbar[0]/btn[0]").press
 
-' --- Popup de pacote ---
-Dim campoPacote
-Set campoPacote = EsperarElemento("wnd[1]/usr/ctxtKO007-L_DEVCLASS")
-If Not campoPacote Is Nothing Then
-   campoPacote.text = packageName
-   campoPacote.caretPosition = Len(packageName)
-
-   On Error Resume Next
-   session.findById("wnd[1]/tbar[0]/btn[0]").press
-   If Err.Number <> 0 Then
-      Err.Clear
-      session.findById("wnd[1]/tbar[0]/btn[7]").press
-   End If
-   On Error GoTo 0
-
-   WScript.Sleep 1000
-End If
-
-' --- Popup de request ---
 If UCase(Trim(packageName)) <> "$TMP" Then
-   Dim campoRequest
-   Set campoRequest = EsperarElemento("wnd[1]/usr/ctxtKO008-TRKORR")
-
-   If campoRequest Is Nothing Then
-      WScript.Echo "Erro: pacote informado nao e $TMP e o popup de request nao apareceu."
-      WScript.Quit 1
-   End If
-
-   If Trim(requestId) = "" Then
-      WScript.Echo "Erro: pacote nao e $TMP, mas nenhuma request foi informada."
-      WScript.Quit 1
-   End If
-
-   campoRequest.text = requestId
-   campoRequest.caretPosition = Len(requestId)
+   session.findById("wnd[1]/usr/ctxtKO008-TRKORR").text = requestId
    session.findById("wnd[1]/tbar[0]/btn[0]").press
-   WScript.Sleep 1000
 End If
 
-' --- Ativar ---
 session.findById("wnd[0]/tbar[1]/btn[27]").press
-WScript.Sleep 1000
-
-' --- Confirma popup final, se existir ---
-On Error Resume Next
 session.findById("wnd[1]").sendVKey 0
-On Error GoTo 0
-WScript.Sleep 500
-
-WScript.Echo "Elemento de dados " & elementName & " criado com sucesso."
