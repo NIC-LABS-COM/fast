@@ -185,6 +185,21 @@ WScript.Sleep 500
 ' Cabecalho inicial
 ' ------------------------------------------------------------
 session.findById("wnd[0]").maximize
+WScript.Sleep 500
+session.findById("wnd[0]/tbar[0]/okcd").text = "/NSE11"
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 1000
+
+session.findById("wnd[0]/usr/radRSRD1-TBMA").setFocus
+session.findById("wnd[0]/usr/radRSRD1-TBMA").select
+WScript.Sleep 500
+
+session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").text = tableName
+session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").caretPosition = Len(tableName)
+session.findById("wnd[0]/usr/btnPUSHADD").press
+WScript.Sleep 1000
+
+session.findById("wnd[0]").maximize
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
 WScript.Sleep 300
@@ -204,204 +219,5 @@ WScript.Sleep 500
 
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").setFocus
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").key = "X"
-WScript.Sleep 400
 session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 400
-
-session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
-session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
-WScript.Sleep 300
-' ------------------------------------------------------------
-' Preenche campos da aba DEF com suporte a N linhas
-' ------------------------------------------------------------
-Dim linhas, i, partes
-Dim fieldName, keyFlag, notNullFlag, rollName, fieldDesc, fieldType, fieldLen, refTab, refField
-Dim objTableDef, visibleRowsDef, visibleRow, scrollPos, currentScroll
-
-linhas = SplitSafe(fieldsSpec, ";")
-
-Set objTableDef = EsperarElemento("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0")
-If objTableDef Is Nothing Then
-   WScript.Echo "Erro: grade da aba DEF nao foi encontrada."
-   WScript.Quit 1
-End If
-
-visibleRowsDef = objTableDef.VisibleRowCount
-currentScroll = -1
-
-For i = 0 To UBound(linhas)
-   If Trim(linhas(i)) <> "" Then
-      partes = Split(linhas(i), "|")
-
-      fieldName   = GetPart(partes, 0)
-      keyFlag     = GetPart(partes, 1)
-      notNullFlag = GetPart(partes, 2)
-      rollName    = GetPart(partes, 3)
-      fieldDesc   = GetPart(partes, 4)
-      fieldType   = GetPart(partes, 5)
-      fieldLen    = GetPart(partes, 6)
-      refTab      = GetPart(partes, 7)
-      refField    = GetPart(partes, 8)
-
-      visibleRow = i Mod visibleRowsDef
-      scrollPos = i - visibleRow
-
-      If scrollPos <> currentScroll Then
-         SetScrollIfNeeded objTableDef, scrollPos
-         currentScroll = scrollPos
-      End If
-
-      session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0," & CStr(visibleRow) & "]").text = fieldName
-      session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0," & CStr(visibleRow) & "]").setFocus
-      session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-FIELDNAME[0," & CStr(visibleRow) & "]").caretPosition = Len(fieldName)
-      PressEnter
-
-      If keyFlag = "1" Then
-         session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/chkDD03P-KEYFLAG[1," & CStr(visibleRow) & "]").selected = True
-      End If
-
-      If notNullFlag = "1" Then
-         session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/chkDD03P-NOTNULL[2," & CStr(visibleRow) & "]").selected = True
-      End If
-
-      session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-ROLLNAME[3," & CStr(visibleRow) & "]").text = rollName
-      session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-ROLLNAME[3," & CStr(visibleRow) & "]").setFocus
-      session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpDEF/ssubTS_SCREEN:SAPLDS41:2201/tblSAPLSD41TC0/txtDD03D-ROLLNAME[3," & CStr(visibleRow) & "]").caretPosition = Len(rollName)
-      PressEnter
-   End If
-Next
-
-' ------------------------------------------------------------
-' Preenche REF_TAB e REF_FIELD na aba REFF, com suporte a N linhas
-' ------------------------------------------------------------
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpF4V").select
-WScript.Sleep 300
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF").select
 WScript.Sleep 500
-
-Dim objTableRef, visibleRowsRef
-Set objTableRef = EsperarElemento("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0")
-If objTableRef Is Nothing Then
-   WScript.Echo "Erro: grade da aba REFF nao foi encontrada."
-   WScript.Quit 1
-End If
-
-visibleRowsRef = objTableRef.VisibleRowCount
-currentScroll = -1
-
-For i = 0 To UBound(linhas)
-   If Trim(linhas(i)) <> "" Then
-      partes = Split(linhas(i), "|")
-
-      refTab   = GetPart(partes, 7)
-      refField = GetPart(partes, 8)
-
-      If refTab <> "" Or refField <> "" Then
-         visibleRow = i Mod visibleRowsRef
-         scrollPos = i - visibleRow
-
-         If scrollPos <> currentScroll Then
-            SetScrollIfNeeded objTableRef, scrollPos
-            currentScroll = scrollPos
-         End If
-
-         If refTab <> "" Then
-            session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0/txtDD03P_D-REFTABLE[3," & CStr(visibleRow) & "]").text = refTab
-            session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0/txtDD03P_D-REFTABLE[3," & CStr(visibleRow) & "]").setFocus
-            session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0/txtDD03P_D-REFTABLE[3," & CStr(visibleRow) & "]").caretPosition = Len(refTab)
-            PressEnter
-         End If
-
-         If refField <> "" Then
-            session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0/txtDD03P_D-REFFIELD[4," & CStr(visibleRow) & "]").text = refField
-            session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0/txtDD03P_D-REFFIELD[4," & CStr(visibleRow) & "]").setFocus
-            session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpREFF/ssubTS_SCREEN:SAPLDS41:2103/tblSAPLSD41TC0/txtDD03P_D-REFFIELD[4," & CStr(visibleRow) & "]").caretPosition = Len(refField)
-            PressEnter
-         End If
-      End If
-   End If
-Next
-
-' ------------------------------------------------------------
-' Ativacao inicial para abrir a tela de atributos adicionais
-' ------------------------------------------------------------
-session.findById("wnd[0]/tbar[1]/btn[27]").press
-WScript.Sleep 1000
-
-' ------------------------------------------------------------
-' Popup de pacote
-' ------------------------------------------------------------
-Dim campoPacote
-Set campoPacote = EsperarElemento("wnd[1]/usr/ctxtKO007-L_DEVCLASS")
-If Not campoPacote Is Nothing Then
-   campoPacote.text = packageName
-   campoPacote.caretPosition = Len(packageName)
-
-   On Error Resume Next
-   session.findById("wnd[1]/tbar[0]/btn[7]").press
-   If Err.Number <> 0 Then
-      Err.Clear
-      session.findById("wnd[1]/tbar[0]/btn[0]").press
-   End If
-   On Error GoTo 0
-
-   WScript.Sleep 1000
-End If
-
-' ------------------------------------------------------------
-' Popup de request
-' ------------------------------------------------------------
-If UCase(Trim(packageName)) <> "$TMP" Then
-   Dim campoRequest
-   Set campoRequest = EsperarElemento("wnd[1]/usr/ctxtKO008-TRKORR")
-
-   If campoRequest Is Nothing Then
-      WScript.Echo "Erro: pacote informado nao e $TMP e o popup de request nao apareceu."
-      WScript.Quit 1
-   End If
-
-   If Trim(requestId) = "" Then
-      WScript.Echo "Erro: pacote nao e $TMP, mas nenhuma request foi informada."
-      WScript.Quit 1
-   End If
-
-   campoRequest.text = requestId
-   campoRequest.caretPosition = Len(requestId)
-   session.findById("wnd[1]/tbar[0]/btn[0]").press
-   WScript.Sleep 1000
-End If
-
-' ------------------------------------------------------------
-' Tela GNIRL: TABART e TABKAT
-' ------------------------------------------------------------
-Dim campoTabartFinal
-Dim campoTabkatFinal
-
-Set campoTabartFinal = EsperarElemento("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART")
-If Not campoTabartFinal Is Nothing Then
-   campoTabartFinal.text = tabArt
-   campoTabartFinal.caretPosition = Len(tabArt)
-   PressEnter
-End If
-
-Set campoTabkatFinal = EsperarElemento("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT")
-If Not campoTabkatFinal Is Nothing Then
-   campoTabkatFinal.text = tabKat
-   campoTabkatFinal.setFocus
-   campoTabkatFinal.caretPosition = Len(tabKat)
-   PressEnter
-End If
-
-' ------------------------------------------------------------
-' Salvar / voltar / ativar final
-' ------------------------------------------------------------
-On Error Resume Next
-session.findById("wnd[0]/tbar[0]/btn[11]").press
-WScript.Sleep 800
-session.findById("wnd[0]/tbar[0]/btn[3]").press
-WScript.Sleep 800
-session.findById("wnd[0]/tbar[1]/btn[27]").press
-On Error GoTo 0
-WScript.Sleep 1000
-
-WScript.Echo "Tabela " & tableName & " criada com sucesso."
