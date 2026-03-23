@@ -186,23 +186,20 @@ WScript.Sleep 500
 ' ------------------------------------------------------------
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
-session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
+session.findById("wnd[0]").sendVKey 4
+session.findById("wnd[0]").close
 WScript.Sleep 300
 
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").setFocus
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 0
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/txtVALUE_TEXT-DDTEXT").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/txtVALUE_TEXT-DDTEXT").caretPosition = 0
 session.findById("wnd[0]").sendVKey 4
 WScript.Sleep 800
 
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 0
+session.findById("wnd[0]").sendVKey 4                             
+                              
 session.findById("wnd[1]/usr/lbl[3,3]").setFocus
-session.findById("wnd[1]/usr/lbl[3,3]").caretPosition = 5
+session.findById("wnd[1]/usr/lbl[3,3]").caretPosition = 20
 session.findById("wnd[1]").sendVKey 2
-WScript.Sleep 800
 
-session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 500
-
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").setFocus
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").key = "X"
-session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 500
