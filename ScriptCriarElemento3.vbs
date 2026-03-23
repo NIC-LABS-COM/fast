@@ -56,31 +56,63 @@ If WScript.Arguments.Count >= 5 Then
 End If
 
 session.findById("wnd[0]").maximize
+WScript.Sleep 500
+
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse11"
 session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 1000
+
+session.findById("wnd[0]/usr/radRSRD1-DDTYPE").setFocus
+session.findById("wnd[0]/usr/radRSRD1-DDTYPE").select
+WScript.Sleep 500
+
 session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").text = elementName
 session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").caretPosition = Len(elementName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
+WScript.Sleep 1000
+
 session.findById("wnd[1]/tbar[0]/btn[0]").press
+WScript.Sleep 1000
+
 session.findById("wnd[0]/usr/txtDD04D-DDTEXT").text = elementText
+WScript.Sleep 300
+
 session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").text = domainName
 session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").setFocus
 session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").caretPosition = Len(domainName)
+WScript.Sleep 300
+
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
+
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT").select
+WScript.Sleep 500
+
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_S").text = elementText
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_M").text = elementText
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-SCRTEXT_L").text = elementText
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT").text = elementText
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT").setFocus
 session.findById("wnd[0]/usr/tabsTS/tabpTEXT/ssubSUB_DATA:SAPLSD51:1003/txtDD04D-REPTEXT").caretPosition = Len(elementText)
+WScript.Sleep 300
+
 session.findById("wnd[0]/tbar[0]/btn[11]").press
+WScript.Sleep 1000
+
 session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").text = packageName
+session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
 session.findById("wnd[1]/tbar[0]/btn[0]").press
+WScript.Sleep 1000
 
 If UCase(Trim(packageName)) <> "$TMP" Then
    session.findById("wnd[1]/usr/ctxtKO008-TRKORR").text = requestId
+   session.findById("wnd[1]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
    session.findById("wnd[1]/tbar[0]/btn[0]").press
+   WScript.Sleep 1000
 End If
 
 session.findById("wnd[0]/tbar[1]/btn[27]").press
+WScript.Sleep 1000
+
 session.findById("wnd[1]").sendVKey 0
+WScript.Sleep 500
