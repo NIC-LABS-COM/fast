@@ -179,26 +179,11 @@ WScript.Sleep 1000
 
 
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN").select
-WScript.Sleep 500
-                              
+WScript.Sleep 500                              
+
 ' ------------------------------------------------------------
-' Cabecalho inicial
+' Cabecalho inicial - MINIMO
 ' ------------------------------------------------------------
-session.findById("wnd[0]").maximize
-WScript.Sleep 500
-session.findById("wnd[0]/tbar[0]/okcd").text = "/NSE11"
-session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 1000
-
-session.findById("wnd[0]/usr/radRSRD1-TBMA").setFocus
-session.findById("wnd[0]/usr/radRSRD1-TBMA").select
-WScript.Sleep 500
-
-session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").text = tableName
-session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").caretPosition = Len(tableName)
-session.findById("wnd[0]/usr/btnPUSHADD").press
-WScript.Sleep 1000
-
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
