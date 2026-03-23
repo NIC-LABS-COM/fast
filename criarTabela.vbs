@@ -177,6 +177,9 @@ campoTabela.caretPosition = Len(tableName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
 WScript.Sleep 1000
 
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN").select
+WScript.Sleep 500
 ' ------------------------------------------------------------
 ' Cabecalho inicial
 ' ------------------------------------------------------------
