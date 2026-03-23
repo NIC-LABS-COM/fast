@@ -180,14 +180,15 @@ WScript.Sleep 1000
 
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN").select
 WScript.Sleep 500
+                              
 ' ------------------------------------------------------------
 ' Cabecalho inicial
 ' ------------------------------------------------------------
+session.findById("wnd[0]").maximize
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
 WScript.Sleep 300
 
-' Classe de entrega via search help
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").setFocus
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 0
 session.findById("wnd[0]").sendVKey 4
@@ -201,18 +202,15 @@ WScript.Sleep 800
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 500
 
-' Data Browser / atualizacao permitida
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").setFocus
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").key = "X"
 WScript.Sleep 400
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 400
 
-' Reforca descricao caso a tela limpe
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
 session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
 WScript.Sleep 300
-
 ' ------------------------------------------------------------
 ' Preenche campos da aba DEF com suporte a N linhas
 ' ------------------------------------------------------------
