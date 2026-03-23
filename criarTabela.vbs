@@ -83,27 +83,7 @@ End If
 If WScript.Arguments.Count >= 8 Then
    If Trim(CStr(WScript.Arguments(7))) <> "" Then deliveryClass = CStr(WScript.Arguments(7))
 End If
-
-Function EsperarElemento(strId)
-   Dim obj, t
-   Set obj = Nothing
-
-   For t = 1 To 15
-      On Error Resume Next
-      Set obj = session.findById(strId)
-      On Error GoTo 0
-
-      If Not obj Is Nothing Then
-         Set EsperarElemento = obj
-         Exit Function
-      End If
-
-      WScript.Sleep 500
-   Next
-
-   Set EsperarElemento = Nothing
-End Function
-
+                        
 Function SplitSafe(txt, sep)
    If Trim(txt) = "" Then
       SplitSafe = Array()
