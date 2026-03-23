@@ -273,13 +273,13 @@ If UCase(Trim(packageName)) <> "$TMP" Then
    session.findById("wnd[1]/tbar[0]/btn[0]").press
 End If
 
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").text = tabArt
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").caretPosition = Len(tabArt)
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").text = "APPL0"
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").caretPosition = 5
 session.findById("wnd[0]").sendVKey 0
 
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").text = tabKat
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").text = "3"
 session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").setFocus
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").caretPosition = Len(tabKat)
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").caretPosition = 1
 session.findById("wnd[0]").sendVKey 0
 
 session.findById("wnd[0]/tbar[0]/btn[11]").press
