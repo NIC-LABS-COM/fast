@@ -183,11 +183,26 @@ WScript.Sleep 500
 ' ------------------------------------------------------------
 ' Cabecalho inicial
 ' ------------------------------------------------------------
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").text = deliveryClass
+session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text = tableText
+session.findById("wnd[0]/usr/txtDD02D-DDTEXT").caretPosition = Len(tableText)
+WScript.Sleep 300
+
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").setFocus
-session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 1
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/ctxtDD02D-CONTFLAG").caretPosition = 0
+session.findById("wnd[0]").sendVKey 4
+WScript.Sleep 800
+
+session.findById("wnd[1]/usr/lbl[3,3]").setFocus
+session.findById("wnd[1]/usr/lbl[3,3]").caretPosition = 5
+session.findById("wnd[1]").sendVKey 2
+WScript.Sleep 800
+
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 500
+
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").setFocus
+session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").key = "X"
+WScript.Sleep 400
                            
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").setFocus
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpMAIN/ssubTS_SCREEN:SAPLDS41:2202/cmbDD02D-MAINFLAG").key = "X"
