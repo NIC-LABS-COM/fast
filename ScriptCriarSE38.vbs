@@ -15,10 +15,16 @@ End If
 
 Dim programName
 Dim packageName
+Dim requestId
+Dim titulo
+Dim sourceCode
 Dim codigo
 
 programName = "ZMM_TESTE_PARIMPAR"
 packageName = "$TMP"
+requestId = ""
+titulo = ""
+sourceCode = ""
 
 If WScript.Arguments.Count >= 1 Then
    If Trim(CStr(WScript.Arguments(0))) <> "" Then
@@ -32,16 +38,43 @@ If WScript.Arguments.Count >= 2 Then
    End If
 End If
 
-codigo = _
-"REPORT " & LCase(programName) & "." & vbCrLf & _
-"" & vbCrLf & _
-"DATA lv_num TYPE i VALUE 5." & vbCrLf & _
-"" & vbCrLf & _
-"IF lv_num MOD 2 = 0." & vbCrLf & _
-"  WRITE: / 'Numero par'." & vbCrLf & _
-"ELSE." & vbCrLf & _
-"  WRITE: / 'Numero impar'." & vbCrLf & _
-"ENDIF."
+If WScript.Arguments.Count >= 3 Then
+   If Trim(CStr(WScript.Arguments(2))) <> "" Then
+      requestId = CStr(WScript.Arguments(2))
+   End If
+End If
+
+If WScript.Arguments.Count >= 4 Then
+   If Trim(CStr(WScript.Arguments(3))) <> "" Then
+      titulo = CStr(WScript.Arguments(3))
+   End If
+End If
+
+If WScript.Arguments.Count >= 8 Then
+   If Trim(CStr(WScript.Arguments(7))) <> "" Then
+      sourceCode = CStr(WScript.Arguments(7))
+   End If
+End If
+
+If Trim(CStr(sourceCode)) <> "" Then
+   codigo = sourceCode
+Else
+   codigo = _
+   "REPORT " & LCase(programName) & "." & vbCrLf & _
+   "" & vbCrLf & _
+   "DATA lv_num TYPE i VALUE 5." & vbCrLf & _
+   "" & vbCrLf & _
+   "IF lv_num MOD 2 = 0." & vbCrLf & _
+   "  WRITE: / 'Numero par'." & vbCrLf & _
+   "ELSE." & vbCrLf & _
+   "  WRITE: / 'Numero impar'." & vbCrLf & _
+   "ENDIF."
+End If
+
+' Normaliza quebras de linha caso o backend envie \n como texto
+codigo = Replace(codigo, "\r\n", vbCrLf)
+codigo = Replace(codigo, "\n", vbCrLf)
+codigo = Replace(codigo, "\r", vbCrLf)
 
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse38"
@@ -70,6 +103,17 @@ session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageN
 session.findById("wnd[2]/tbar[0]/btn[0]").press
 WScript.Sleep 1000
 
+' Se nao for $TMP e vier request, tenta preencher
+If UCase(Trim(packageName)) <> "$TMP" Then
+   On Error Resume Next
+   session.findById("wnd[3]/usr/ctxtKO008-TRKORR").text = requestId
+   session.findById("wnd[3]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
+   session.findById("wnd[3]/tbar[0]/btn[0]").press
+   Err.Clear
+   On Error GoTo 0
+   WScript.Sleep 800
+End If
+
 ' Espera o editor abrir
 WScript.Sleep 1000
 
@@ -83,6 +127,7 @@ WScript.Sleep 500
 
 ' Salvar
 session.findById("wnd[0]/tbar[0]/btn[11]").press
+WScript.Sleep 500
 
 ' Ativar
 session.findById("wnd[0]").sendVKey 27
