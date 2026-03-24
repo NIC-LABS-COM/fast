@@ -15,9 +15,21 @@ End If
 
 Dim programName
 Dim packageName
+Dim codigo
 
-programName = "zmm_teste"
+programName = "ZMM_TESTE_PARIMPAR"
 packageName = "$TMP"
+
+codigo = _
+"REPORT " & LCase(programName) & "." & vbCrLf & _
+"" & vbCrLf & _
+"DATA lv_num TYPE i VALUE 5." & vbCrLf & _
+"" & vbCrLf & _
+"IF lv_num MOD 2 = 0." & vbCrLf & _
+"  WRITE: / 'Numero par'." & vbCrLf & _
+"ELSE." & vbCrLf & _
+"  WRITE: / 'Numero impar'." & vbCrLf & _
+"ENDIF."
 
 If WScript.Arguments.Count >= 1 Then
    If Trim(CStr(WScript.Arguments(0))) <> "" Then
@@ -49,4 +61,10 @@ session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").text = packageName
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
 session.findById("wnd[2]/tbar[0]/btn[7]").press
 
-session.findById("wnd[0]").sendVKey 27
+WScript.Sleep 1000
+
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText codigo, 1, 1
+
+WScript.Sleep 500
+
+session.findById("wnd[0]/tbar[0]/btn[11]").press
