@@ -70,7 +70,14 @@ session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageN
 session.findById("wnd[2]/tbar[0]/btn[0]").press
 WScript.Sleep 1000
 
-' Escrever código no editor
+' Espera o editor abrir
+WScript.Sleep 1000
+
+' Apaga o conteúdo padrão gerado pelo SAP
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").deleteRange 1,1,9,1
+WScript.Sleep 500
+
+' Escreve o código no editor
 session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText codigo, 1, 1
 WScript.Sleep 500
 
