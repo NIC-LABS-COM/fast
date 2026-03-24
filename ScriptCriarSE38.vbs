@@ -83,3 +83,6 @@ WScript.Sleep 500
 
 ' Salvar
 session.findById("wnd[0]/tbar[0]/btn[11]").press
+
+' Ativar
+session.findById("wnd[0]").sendVKey 27
