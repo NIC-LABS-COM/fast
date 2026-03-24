@@ -1,3 +1,27 @@
+Function SplitLines(text)
+   text = Replace(text, vbCrLf, vbLf)
+   text = Replace(text, vbCr, vbLf)
+   SplitLines = Split(text, vbLf)
+End Function
+
+Sub EscreverCodigoNoEditor(codeText)
+   Dim editor
+   Dim linhas
+   Dim i
+
+   Set editor = session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell")
+   linhas = SplitLines(codeText)
+
+   For i = 0 To UBound(linhas)
+      If linhas(i) <> "" Then
+         editor.insertText linhas(i), i + 1, 1
+      Else
+         editor.insertText " ", i + 1, 1
+      End If
+      WScript.Sleep 50
+   Next
+End Sub
+
 If Not IsObject(application) Then
    Set SapGuiAuto = GetObject("SAPGUI")
    Set application = SapGuiAuto.GetScriptingEngine
@@ -122,7 +146,7 @@ session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").deleteRange 1,1,9,1
 WScript.Sleep 500
 
 ' Escreve o código no editor
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText codigo, 1, 1
+Call EscreverCodigoNoEditor(codigo)
 WScript.Sleep 500
 
 ' Salvar
