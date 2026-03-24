@@ -14,26 +14,16 @@ If IsObject(WScript) Then
 End If
 
 Dim programName
-Dim titulo
-Dim progType
-Dim progStatus
-Dim applicationArea
-Dim authGroup
 Dim packageName
 Dim requestId
-Dim flow
+Dim titulo
 Dim sourceCode
 Dim codigo
 
 programName = "ZMM_TESTE_PARIMPAR"
-titulo = ""
-progType = ""
-progStatus = ""
-applicationArea = ""
-authGroup = ""
 packageName = "$TMP"
 requestId = ""
-flow = ""
+titulo = ""
 sourceCode = ""
 
 If WScript.Arguments.Count >= 1 Then
@@ -44,55 +34,25 @@ End If
 
 If WScript.Arguments.Count >= 2 Then
    If Trim(CStr(WScript.Arguments(1))) <> "" Then
-      titulo = CStr(WScript.Arguments(1))
+      packageName = CStr(WScript.Arguments(1))
    End If
 End If
 
 If WScript.Arguments.Count >= 3 Then
    If Trim(CStr(WScript.Arguments(2))) <> "" Then
-      progType = CStr(WScript.Arguments(2))
+      requestId = CStr(WScript.Arguments(2))
    End If
 End If
 
 If WScript.Arguments.Count >= 4 Then
    If Trim(CStr(WScript.Arguments(3))) <> "" Then
-      progStatus = CStr(WScript.Arguments(3))
-   End If
-End If
-
-If WScript.Arguments.Count >= 5 Then
-   If Trim(CStr(WScript.Arguments(4))) <> "" Then
-      applicationArea = CStr(WScript.Arguments(4))
-   End If
-End If
-
-If WScript.Arguments.Count >= 6 Then
-   If Trim(CStr(WScript.Arguments(5))) <> "" Then
-      authGroup = CStr(WScript.Arguments(5))
-   End If
-End If
-
-If WScript.Arguments.Count >= 7 Then
-   If Trim(CStr(WScript.Arguments(6))) <> "" Then
-      packageName = CStr(WScript.Arguments(6))
+      titulo = CStr(WScript.Arguments(3))
    End If
 End If
 
 If WScript.Arguments.Count >= 8 Then
    If Trim(CStr(WScript.Arguments(7))) <> "" Then
-      requestId = CStr(WScript.Arguments(7))
-   End If
-End If
-
-If WScript.Arguments.Count >= 9 Then
-   If Trim(CStr(WScript.Arguments(8))) <> "" Then
-      flow = CStr(WScript.Arguments(8))
-   End If
-End If
-
-If WScript.Arguments.Count >= 10 Then
-   If Trim(CStr(WScript.Arguments(9))) <> "" Then
-      sourceCode = CStr(WScript.Arguments(9))
+      sourceCode = CStr(WScript.Arguments(7))
    End If
 End If
 
@@ -111,6 +71,7 @@ Else
    "ENDIF."
 End If
 
+' Normaliza quebras de linha caso o backend envie \n como texto
 codigo = Replace(codigo, "\r\n", vbCrLf)
 codigo = Replace(codigo, "\n", vbCrLf)
 codigo = Replace(codigo, "\r", vbCrLf)
@@ -124,26 +85,25 @@ session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = programName
 session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = Len(programName)
 WScript.Sleep 300
 
+' Clicar em Criar / New
 session.findById("wnd[0]/usr/btnNEW").press
 WScript.Sleep 800
 
+' Popup de criação do programa
 session.findById("wnd[1]/usr/txtRS38M-REPTI").text = programName
-
-If Trim(progType) = "" Then
-   progType = "1"
-End If
 session.findById("wnd[1]/usr/cmbTRDIR-SUBC").setFocus
-session.findById("wnd[1]/usr/cmbTRDIR-SUBC").key = progType
-
+session.findById("wnd[1]/usr/cmbTRDIR-SUBC").key = "1"
 session.findById("wnd[1]/usr/cmbTRDIR-RSTAT").setFocus
 session.findById("wnd[1]/tbar[0]/btn[0]").press
 WScript.Sleep 800
 
+' Popup do pacote
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").text = packageName
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
 session.findById("wnd[2]/tbar[0]/btn[0]").press
 WScript.Sleep 1000
 
+' Se nao for $TMP e vier request, tenta preencher
 If UCase(Trim(packageName)) <> "$TMP" Then
    On Error Resume Next
    session.findById("wnd[3]/usr/ctxtKO008-TRKORR").text = requestId
@@ -154,18 +114,20 @@ If UCase(Trim(packageName)) <> "$TMP" Then
    WScript.Sleep 800
 End If
 
+' Espera o editor abrir
 WScript.Sleep 1000
 
+' Apaga o conteúdo padrão gerado pelo SAP
 session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").deleteRange 1,1,9,1
 WScript.Sleep 500
 
+' Escreve o código no editor
 session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText codigo, 1, 1
 WScript.Sleep 500
 
+' Salvar
 session.findById("wnd[0]/tbar[0]/btn[11]").press
 WScript.Sleep 500
 
-flow = UCase(Trim(CStr(flow)))
-If flow = "CRIAR E ATIVAR" Or flow = "ATIVAR" Then
-   session.findById("wnd[0]").sendVKey 27
-End If
+' Ativar
+session.findById("wnd[0]").sendVKey 27
