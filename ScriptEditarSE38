@@ -1,0 +1,32 @@
+If Not IsObject(application) Then
+   Set SapGuiAuto = GetObject("SAPGUI")
+   Set application = SapGuiAuto.GetScriptingEngine
+End If
+If Not IsObject(connection) Then
+   Set connection = application.Children(0)
+End If
+If Not IsObject(session) Then
+   Set session = connection.Children(0)
+End If
+If IsObject(WScript) Then
+   WScript.ConnectObject session, "on"
+   WScript.ConnectObject application, "on"
+End If
+
+Dim programName
+
+programName = "Z05_TESTE_1"
+
+If WScript.Arguments.Count >= 1 Then
+   If Trim(CStr(WScript.Arguments(0))) <> "" Then
+      programName = CStr(WScript.Arguments(0))
+   End If
+End If
+
+session.findById("wnd[0]").maximize
+session.findById("wnd[0]/tbar[0]/okcd").text = "/NSE38"
+session.findById("wnd[0]").sendVKey 0
+
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = programName
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = Len(programName)
+session.findById("wnd[0]/usr/btnCHAP").press
