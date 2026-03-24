@@ -5,18 +5,16 @@ Function SplitLines(text)
 End Function
 
 Sub EscreverCodigoNoEditor(codeText)
-   Dim editor
    Dim linhas
    Dim i
 
-   Set editor = session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell")
    linhas = SplitLines(codeText)
 
    For i = 0 To UBound(linhas)
       If linhas(i) <> "" Then
-         editor.insertText linhas(i), i + 1, 1
+         session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText linhas(i), i + 1, 1
       Else
-         editor.insertText " ", i + 1, 1
+         session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText " ", i + 1, 1
       End If
       WScript.Sleep 50
    Next
@@ -168,9 +166,7 @@ End If
 WScript.Sleep 1000
 
 ' Apaga o conteúdo padrão gerado pelo SAP
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").text = "" + vbCr + ""
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").setSelectionIndexes 0,0
-
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").deleteRange 1,1,9,1
 WScript.Sleep 500
 
 ' Escreve o código no editor
