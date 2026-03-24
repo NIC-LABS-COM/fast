@@ -166,7 +166,8 @@ End If
 WScript.Sleep 1000
 
 ' Apaga o conteúdo padrão gerado pelo SAP
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").deleteRange 1,1,9,1
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").text = "" + vbCr + ""
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").setSelectionIndexes 0,0
 WScript.Sleep 500
 
 ' Escreve o código no editor
