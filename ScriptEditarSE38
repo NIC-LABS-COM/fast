@@ -1,112 +1,20 @@
 Option Explicit
 
 Dim SapGuiAuto, application, connection, session
-Dim editor, sourceCode, outputPath
-Dim fso, outFile
+Dim programName, codigo
 
-Function IsValidObj(obj)
-    On Error Resume Next
+Sub Pause(seconds)
     Dim t
-    t = TypeName(obj)
-    IsValidObj = (Err.Number = 0)
-    Err.Clear
-    On Error GoTo 0
-End Function
+    t = Timer
+    Do While Timer < t + seconds
+    Loop
+End Sub
 
-Function GetActiveSession(app)
-    On Error Resume Next
-    Set GetActiveSession = app.ActiveSession
-    If Err.Number <> 0 Then
-        Err.Clear
-        Set GetActiveSession = Nothing
-    End If
-    On Error GoTo 0
-End Function
-
-Function FindEditor(sess)
-    Dim paths, i, obj
-    paths = Array( _
-        "wnd[0]/usr/cntlEDITOR/shellcont/shell", _
-        "wnd[0]/usr/cntlEDITOR1/shellcont/shell", _
-        "wnd[0]/usr/subSUBSCR_EDITOR:SAPLSEU0:0110/cntlEDITOR_CONTAINER/shellcont/shell", _
-        "wnd[0]/usr/subSUBSCREEN_EDITOR:SAPLSEU0:0110/cntlEDITOR_CONTAINER/shellcont/shell" _
-    )
-
-    Set FindEditor = Nothing
-
-    For i = 0 To UBound(paths)
-        On Error Resume Next
-        Set obj = sess.findById(paths(i))
-        If Err.Number = 0 Then
-            If IsValidObj(obj) Then
-                Set FindEditor = obj
-                Exit Function
-            End If
-        End If
-        Err.Clear
-        On Error GoTo 0
-    Next
-End Function
-
-Function TryCopyEditor(ctrl)
-    Dim text, i, lineCount, tmp
-    text = ""
-
-    On Error Resume Next
-
-    text = ctrl.Text
-    If Err.Number = 0 Then
-        If Trim(CStr(text)) <> "" Then
-            TryCopyEditor = CStr(text)
-            Exit Function
-        End If
-    End If
-    Err.Clear
-
-    text = ctrl.GetText()
-    If Err.Number = 0 Then
-        If Trim(CStr(text)) <> "" Then
-            TryCopyEditor = CStr(text)
-            Exit Function
-        End If
-    End If
-    Err.Clear
-
-    lineCount = ctrl.LineCount
-    If Err.Number = 0 Then
-        If lineCount > 0 Then
-            text = ""
-            For i = 1 To lineCount
-                tmp = ctrl.GetLine(i)
-                If Err.Number <> 0 Then
-                    Err.Clear
-                    Exit For
-                End If
-                text = text & tmp & vbCrLf
-            Next
-            If Trim(text) <> "" Then
-                TryCopyEditor = text
-                Exit Function
-            End If
-        End If
-    End If
-    Err.Clear
-
-    ctrl.SelectAll
-    ctrl.Copy
-    If Err.Number = 0 Then
-        Dim html
-        Set html = CreateObject("htmlfile")
-        text = html.ParentWindow.ClipboardData.GetData("text")
-        If Trim(CStr(text)) <> "" Then
-            TryCopyEditor = CStr(text)
-            Exit Function
-        End If
-    End If
-    Err.Clear
-
-    On Error GoTo 0
-    TryCopyEditor = ""
+Function NormalizeLineBreaks(text)
+    text = Replace(text, "\r\n", vbCrLf)
+    text = Replace(text, "\n", vbCrLf)
+    text = Replace(text, "\r", vbCrLf)
+    NormalizeLineBreaks = text
 End Function
 
 If Not IsObject(application) Then
@@ -118,42 +26,39 @@ If Not IsObject(connection) Then
     Set connection = application.Children(0)
 End If
 
-Set session = GetActiveSession(application)
 If Not IsObject(session) Then
     Set session = connection.Children(0)
 End If
 
-If IsObject(WScript) Then
-    WScript.ConnectObject session, "on"
-    WScript.ConnectObject application, "on"
-End If
+programName = "zpar_impar_check"
+
+codigo = _
+"REPORT zpar_impar_check." & vbCrLf & _
+"" & vbCrLf & _
+"START-OF-SELECTION." & vbCrLf & _
+"  WRITE: 'deu certo'."
+
+codigo = NormalizeLineBreaks(codigo)
 
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse38"
 session.findById("wnd[0]").sendVKey 0
+Pause 1
 
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = "Z05_TESTE_1"
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = 10
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = programName
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = Len(programName)
+Pause 0.5
 
-' abre o report no editor
 session.findById("wnd[0]/usr/btnCHAP").press
+Pause 1
 
-Set editor = FindEditor(session)
-sourceCode = ""
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").deleteRange 1, 1, 10000, 10000
+Pause 0.5
 
-If IsObject(editor) Then
-    sourceCode = TryCopyEditor(editor)
-End If
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText codigo, 1, 1
+Pause 0.5
 
-Set fso = CreateObject("Scripting.FileSystemObject")
-outputPath = fso.GetSpecialFolder(2) & "\Z05_TESTE_1_fonte.txt"
+session.findById("wnd[0]/tbar[0]/btn[11]").press
+Pause 0.5
 
-Set outFile = fso.CreateTextFile(outputPath, True)
-
-If Trim(sourceCode) = "" Then
-    outFile.WriteLine "ERRO: nao foi possivel copiar o codigo fonte de Z05_TESTE_1."
-Else
-    outFile.Write sourceCode
-End If
-
-outFile.Close
+session.findById("wnd[0]").sendVKey 27
