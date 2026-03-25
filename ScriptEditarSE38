@@ -1,67 +1,26 @@
-Option Explicit
-
-Dim SapGuiAuto, application, connection, session
-Dim programName, sourceCode
-Dim fso, tempPath, outputPath, fRead, fOut
-
 If Not IsObject(application) Then
-    Set SapGuiAuto  = GetObject("SAPGUI")
+    Set SapGuiAuto = GetObject("SAPGUI")
     Set application = SapGuiAuto.GetScriptingEngine
 End If
-
 If Not IsObject(connection) Then
     Set connection = application.Children(0)
 End If
-
 If Not IsObject(session) Then
     Set session = connection.Children(0)
 End If
-
-programName = "Z05_TESTE_1"
-sourceCode  = ""
-
-Set fso = CreateObject("Scripting.FileSystemObject")
-
-tempPath   = fso.GetSpecialFolder(2) & "\sap_export_" & programName & ".txt"
-outputPath = fso.GetSpecialFolder(2) & "\resultado_" & programName & ".txt"
+If IsObject(WScript) Then
+    WScript.ConnectObject session, "on"
+    WScript.ConnectObject application, "on"
+End If
 
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse38"
 session.findById("wnd[0]").sendVKey 0
 
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = programName
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = Len(programName)
-session.findById("wnd[0]").sendVKey 0
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = "Z05_TESTE_1"
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = 10
 
-On Error Resume Next
-sourceCode = session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").currentContent
-On Error GoTo 0
+session.findById("wnd[0]/usr/btnCHAP").press
 
-If Trim(sourceCode) = "" Then
-    On Error Resume Next
-    session.findById("wnd[0]/mbar/menu[3]/menu[7]/menu[1]/menu[1]").Select
-    session.findById("wnd[1]/usr/ctxtDY_PATH").text     = fso.GetSpecialFolder(2) & "\"
-    session.findById("wnd[1]/usr/ctxtDY_FILENAME").text = "sap_export_" & programName & ".txt"
-    session.findById("wnd[1]/tbar[0]/btn[0]").press
-    On Error GoTo 0
-
-    If fso.FileExists(tempPath) Then
-        Set fRead = fso.OpenTextFile(tempPath, 1, False)
-        sourceCode = fRead.ReadAll
-        fRead.Close
-
-        On Error Resume Next
-        fso.DeleteFile tempPath
-        On Error GoTo 0
-    End If
-End If
-
-If Trim(sourceCode) = "" Then
-    Set fOut = fso.CreateTextFile(outputPath, True)
-    fOut.WriteLine "ERRO: Programa " & programName & " nao encontrado ou sem codigo."
-    fOut.Close
-Else
-    Set fOut = fso.CreateTextFile(outputPath, True)
-    fOut.Write sourceCode
-    fOut.Close
-End If
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").setSelectionIndexes 560,560
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").contextMenu
