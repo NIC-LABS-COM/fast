@@ -1,134 +1,135 @@
+' ============================================================
+' ScriptCriarSE38.vbs
+' Cria programa ABAP na transacao SE38 via SAP GUI Scripting
+'
+' Argumentos posicionais (WScript.Arguments):
+'   0: programName  - Nome do programa (ex: ZREPORT_VENDAS)
+'   1: packageName  - Pacote ($TMP para local)
+'   2: requestId    - Numero da request (vazio se $TMP)
+'   3: titulo       - Descricao do programa
+'   4-6: reservado
+'   7: sourceCode   - Codigo ABAP com \n no lugar de quebra de linha
+' ============================================================
+Option Explicit
+
+Dim SapGuiAuto, application, connection, session
 If Not IsObject(application) Then
-   Set SapGuiAuto = GetObject("SAPGUI")
-   Set application = SapGuiAuto.GetScriptingEngine
+    Set SapGuiAuto  = GetObject("SAPGUI")
+    Set application = SapGuiAuto.GetScriptingEngine
 End If
 If Not IsObject(connection) Then
-   Set connection = application.Children(0)
+    Set connection = application.Children(0)
 End If
 If Not IsObject(session) Then
-   Set session = connection.Children(0)
-End If
-If IsObject(WScript) Then
-   WScript.ConnectObject session, "on"
-   WScript.ConnectObject application, "on"
+    Set session = connection.Children(0)
 End If
 
-Dim programName
-Dim packageName
-Dim requestId
-Dim titulo
-Dim sourceCode
-Dim codigo
+Dim programName, packageName, requestId, titulo, sourceCode, codigo
 
-programName = "ZMM_TESTE_PARIMPAR"
+programName = "ZTEST_DEFAULT"
 packageName = "$TMP"
-requestId = ""
-titulo = ""
-sourceCode = ""
+requestId   = ""
+titulo      = ""
+sourceCode  = ""
 
 If WScript.Arguments.Count >= 1 Then
-   If Trim(CStr(WScript.Arguments(0))) <> "" Then
-      programName = CStr(WScript.Arguments(0))
-   End If
+    If Trim(CStr(WScript.Arguments(0))) <> "" Then
+        programName = UCase(Trim(CStr(WScript.Arguments(0))))
+    End If
 End If
-
 If WScript.Arguments.Count >= 2 Then
-   If Trim(CStr(WScript.Arguments(1))) <> "" Then
-      packageName = CStr(WScript.Arguments(1))
-   End If
+    If Trim(CStr(WScript.Arguments(1))) <> "" Then
+        packageName = Trim(CStr(WScript.Arguments(1)))
+    End If
 End If
-
 If WScript.Arguments.Count >= 3 Then
-   If Trim(CStr(WScript.Arguments(2))) <> "" Then
-      requestId = CStr(WScript.Arguments(2))
-   End If
+    requestId = Trim(CStr(WScript.Arguments(2)))
 End If
-
 If WScript.Arguments.Count >= 4 Then
-   If Trim(CStr(WScript.Arguments(3))) <> "" Then
-      titulo = CStr(WScript.Arguments(3))
-   End If
+    titulo = Trim(CStr(WScript.Arguments(3)))
 End If
-
 If WScript.Arguments.Count >= 8 Then
-   If Trim(CStr(WScript.Arguments(7))) <> "" Then
-      sourceCode = CStr(WScript.Arguments(7))
-   End If
+    If Trim(CStr(WScript.Arguments(7))) <> "" Then
+        sourceCode = CStr(WScript.Arguments(7))
+    End If
 End If
 
-If Trim(CStr(sourceCode)) <> "" Then
-   codigo = sourceCode
+' Decodificar \n para quebras de linha reais
+If Trim(sourceCode) <> "" Then
+    codigo = sourceCode
+    codigo = Replace(codigo, "\r\n", vbCrLf)
+    codigo = Replace(codigo, "\n",   vbCrLf)
+    codigo = Replace(codigo, "\r",   vbCrLf)
 Else
-   codigo = _
-   "REPORT " & LCase(programName) & "." & vbCrLf & _
-   "" & vbCrLf & _
-   "DATA lv_num TYPE i VALUE 5." & vbCrLf & _
-   "" & vbCrLf & _
-   "IF lv_num MOD 2 = 0." & vbCrLf & _
-   "  WRITE: / 'Numero par'." & vbCrLf & _
-   "ELSE." & vbCrLf & _
-   "  WRITE: / 'Numero impar'." & vbCrLf & _
-   "ENDIF."
+    codigo = "REPORT " & LCase(programName) & "." & vbCrLf & vbCrLf & "* TODO: implementar"
 End If
 
-' Normaliza quebras de linha caso o backend envie \n como texto
-codigo = Replace(codigo, "\r\n", vbCrLf)
-codigo = Replace(codigo, "\n", vbCrLf)
-codigo = Replace(codigo, "\r", vbCrLf)
-
+' ---- Navegar para SE38 ------------------------------------------
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/tbar[0]/okcd").text = "/nse38"
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 800
 
+' ---- Preencher nome e clicar em Criar ---------------------------
 session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = programName
 session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = Len(programName)
 WScript.Sleep 300
-
-' Clicar em Criar / New
 session.findById("wnd[0]/usr/btnNEW").press
 WScript.Sleep 800
 
-' Popup de criação do programa
-session.findById("wnd[1]/usr/txtRS38M-REPTI").text = programName
+' ---- Popup de atributos wnd[1] ----------------------------------
+session.findById("wnd[1]/usr/txtRS38M-REPTI").text = titulo
 session.findById("wnd[1]/usr/cmbTRDIR-SUBC").setFocus
 session.findById("wnd[1]/usr/cmbTRDIR-SUBC").key = "1"
 session.findById("wnd[1]/usr/cmbTRDIR-RSTAT").setFocus
 session.findById("wnd[1]/tbar[0]/btn[0]").press
 WScript.Sleep 800
 
-' Popup do pacote
+' ---- Popup de pacote wnd[2] -------------------------------------
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").text = packageName
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
 session.findById("wnd[2]/tbar[0]/btn[0]").press
 WScript.Sleep 1000
 
-' Se nao for $TMP e vier request, tenta preencher
+' ---- Request (apenas quando nao for $TMP) -----------------------
 If UCase(Trim(packageName)) <> "$TMP" Then
-   On Error Resume Next
-   session.findById("wnd[3]/usr/ctxtKO008-TRKORR").text = requestId
-   session.findById("wnd[3]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
-   session.findById("wnd[3]/tbar[0]/btn[0]").press
-   Err.Clear
-   On Error GoTo 0
-   WScript.Sleep 800
+    On Error Resume Next
+    session.findById("wnd[3]/usr/ctxtKO008-TRKORR").text = requestId
+    session.findById("wnd[3]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
+    session.findById("wnd[3]/tbar[0]/btn[0]").press
+    Err.Clear
+    On Error GoTo 0
+    WScript.Sleep 800
 End If
 
-' Espera o editor abrir
+' ---- Aguardar o editor ABAP abrir -------------------------------
 WScript.Sleep 1000
 
-' Apaga o conteúdo padrão gerado pelo SAP
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").text = "" + vcCr = ""
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").setSelectionIndexes 0,0
+' ---- Inserir codigo usando setContent (substitui todo o conteudo)
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").setContent(codigo)
 WScript.Sleep 500
 
-' Escreve o código no editor
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").insertText codigo, 1, 1
-WScript.Sleep 500
-
-' Salvar
+' ---- Salvar (Ctrl+S) --------------------------------------------
 session.findById("wnd[0]/tbar[0]/btn[11]").press
-WScript.Sleep 500
+WScript.Sleep 800
 
-' Ativar
-session.findById("wnd[0]").sendVKey 27
+' ---- Ativar (tbar[1]/btn[3]) ------------------------------------
+On Error Resume Next
+session.findById("wnd[0]/tbar[1]/btn[3]").press
+WScript.Sleep 800
+
+' Fechar popup de ativacao se abrir
+If session.findById("wnd[1]").Text <> "" Then
+    session.findById("wnd[1]/tbar[0]/btn[0]").press
+End If
+On Error GoTo 0
+WScript.Sleep 400
+
+' ---- Resultado --------------------------------------------------
+Dim finalMsg
+On Error Resume Next
+finalMsg = session.findById("wnd[0]/sbar").Text
+On Error GoTo 0
+
+WScript.Echo "Programa " & programName & " criado. Status: " & finalMsg
+WScript.Quit 0
