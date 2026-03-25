@@ -105,8 +105,44 @@ End If
 ' ---- Aguardar o editor ABAP abrir -------------------------------
 WScript.Sleep 1000
 
-' ---- Inserir codigo usando setContent (substitui todo o conteudo)
-session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").setContent(codigo)
+' ---- Inserir codigo: tenta currentContent, senao usa upload de arquivo
+Dim editorOk
+editorOk = False
+
+On Error Resume Next
+session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").currentContent = codigo
+If Err.Number = 0 Then editorOk = True
+Err.Clear
+On Error GoTo 0
+
+If Not editorOk Then
+    ' Fallback: gravar em arquivo temporario e importar via menu
+    Dim fso, tempPath, fTemp
+    Set fso  = CreateObject("Scripting.FileSystemObject")
+    tempPath = fso.GetSpecialFolder(2) & "\sap_se38_" & programName & ".txt"
+
+    On Error Resume Next
+    Set fTemp = fso.CreateTextFile(tempPath, True, False)
+    fTemp.Write codigo
+    fTemp.Close
+    On Error GoTo 0
+
+    ' Menu: Utilitarios > Outros Utilitarios > Upload/Download > Upload
+    On Error Resume Next
+    session.findById("wnd[0]/mbar/menu[3]/menu[7]/menu[1]/menu[0]").Select
+    WScript.Sleep 800
+
+    session.findById("wnd[1]/usr/ctxtDY_PATH").text     = fso.GetSpecialFolder(2) & "\"
+    session.findById("wnd[1]/usr/ctxtDY_FILENAME").text = "sap_se38_" & programName & ".txt"
+    session.findById("wnd[1]/tbar[0]/btn[0]").press
+    On Error GoTo 0
+    WScript.Sleep 800
+
+    On Error Resume Next
+    fso.DeleteFile tempPath
+    On Error GoTo 0
+End If
+
 WScript.Sleep 500
 
 ' ---- Salvar (Ctrl+S) --------------------------------------------
