@@ -30,13 +30,28 @@ If Not IsObject(session) Then
     Set session = connection.Children(0)
 End If
 
-programName = "zpar_impar_check"
+programName = ""
+codigo = ""
 
-codigo = _
-"REPORT zpar_impar_check." & vbCrLf & _
-"" & vbCrLf & _
-"START-OF-SELECTION." & vbCrLf & _
-"  WRITE: 'deu certo'."
+If WScript.Arguments.Count >= 1 Then
+    programName = Trim(CStr(WScript.Arguments(0)))
+End If
+
+If WScript.Arguments.Count >= 2 Then
+    codigo = CStr(WScript.Arguments(1))
+End If
+
+If programName = "" Then
+    programName = "zpar_impar_check"
+End If
+
+If codigo = "" Then
+    codigo = _
+    "REPORT zpar_impar_check." & vbCrLf & _
+    "" & vbCrLf & _
+    "START-OF-SELECTION." & vbCrLf & _
+    "  WRITE: 'deu certo'."
+End If
 
 codigo = NormalizeLineBreaks(codigo)
 
