@@ -29,7 +29,7 @@ End If
 session.findById("wnd[0]").maximize
 session.findById("wnd[0]/tbar[0]/okcd").text = "se38"
 session.findById("wnd[0]").sendVKey 0
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = "z_download_arquivo"
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = "z_donwload_arquivo"
 session.findById("wnd[0]").sendVKey 8
 session.findById("wnd[0]/usr/txtP_PROG").text = fileName
 session.findById("wnd[0]/usr/txtP_PROG").caretPosition = Len(fileName)
