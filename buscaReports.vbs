@@ -1,13 +1,13 @@
 ' ============================================================
-' buscaReportsSAP.vbs
+' buscaReports.vbs
 ' Executa programa ABAP Z_BUSCA_REPORTS que gera arquivo
 ' em C:\temp, depois le o conteudo e retorna via stdout.
 '
 ' Argumentos:
-'   0: fileName - Nome do arquivo sem extensao (ex: reports)
+'   0: fileName - Nome do arquivo sem extensao (default: reports)
 '
 ' Saida:
-'   stdout: conteudo do arquivo
+'   stdout: conteudo do arquivo (capturado pelo ConsumerTT)
 ' ============================================================
 Option Explicit
 
@@ -66,7 +66,6 @@ End If
 
 On Error Resume Next
 Set fRead = fso.OpenTextFile(filePath, 1, False)
-
 If Err.Number <> 0 Then
     WScript.StdErr.Write "Erro ao abrir arquivo: " & filePath & " | " & Err.Description
     WScript.Quit 1
