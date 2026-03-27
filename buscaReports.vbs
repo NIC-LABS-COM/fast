@@ -1,3 +1,14 @@
+' ============================================================
+' buscaReportsSAP.vbs
+' Executa programa ABAP Z_BUSCA_REPORTS que gera arquivo
+' em C:\temp, depois le o conteudo e retorna via stdout.
+'
+' Argumentos:
+'   0: fileName - Nome do arquivo sem extensao (ex: reports)
+'
+' Saida:
+'   stdout: conteudo do arquivo
+' ============================================================
 Option Explicit
 
 Dim SapGuiAuto, application, connection, session
@@ -17,29 +28,39 @@ If Not IsObject(session) Then
     Set session = connection.Children(0)
 End If
 
-If IsObject(WScript) Then
-    WScript.ConnectObject session, "on"
-    WScript.ConnectObject application, "on"
+fileName = ""
+
+If WScript.Arguments.Count >= 1 Then
+    fileName = Trim(CStr(WScript.Arguments(0)))
 End If
 
-fileName = "reports"
+If fileName = "" Then
+    fileName = "reports"
+End If
 
+' ---- Executa programa ABAP na SE38 ----
 session.findById("wnd[0]").maximize
-session.findById("wnd[0]/tbar[0]/okcd").Text = "/nse38"
+session.findById("wnd[0]/tbar[0]/okcd").Text = "se38"
 session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
 
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "z_busca_reports"
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "Z_BUSCA_REPORTS"
+session.findById("wnd[0]").sendVKey 8
+WScript.Sleep 500
+
+session.findById("wnd[0]/usr/txtP_PROG").Text = fileName
+session.findById("wnd[0]/usr/txtP_PROG").caretPosition = Len(fileName)
 session.findById("wnd[0]").sendVKey 8
 
-' ---- Aguarda o report terminar e o txt ser gerado ----
+' ---- Aguarda o txt ser gerado ----
 WScript.Sleep 2000
 
-' ---- Agora le o arquivo baixado em C:\temp ----
+' ---- Le o arquivo em C:\temp ----
 Set fso = CreateObject("Scripting.FileSystemObject")
 filePath = "C:\temp\" & fileName & ".txt"
 
 If Not fso.FileExists(filePath) Then
-    WScript.StdErr.Write "Arquivo nao encontrado apos download: " & filePath
+    WScript.StdErr.Write "Arquivo nao encontrado apos execucao do report: " & filePath
     WScript.Quit 1
 End If
 
