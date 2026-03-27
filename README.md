@@ -1,50 +1,40 @@
 *&---------------------------------------------------------------------*
-*& Report Z_BUSCA_REQUESTS
+*& Report Z_BUSCA_REPORTS
 *&---------------------------------------------------------------------*
-REPORT z_busca_requests.
+REPORT z_busca_reports.
 
-TYPES: BEGIN OF ty_request,
-         request     TYPE e070-trkorr,
-         description TYPE e07t-as4text,
-       END OF ty_request.
+TYPES: BEGIN OF ty_report,
+         obj_name TYPE tadir-obj_name,
+       END OF ty_report.
 
-DATA: lt_requests TYPE STANDARD TABLE OF ty_request,
-      ls_request  TYPE ty_request,
+DATA: lt_reports  TYPE STANDARD TABLE OF ty_report,
+      ls_report   TYPE ty_report,
       lt_output   TYPE STANDARD TABLE OF string,
       lv_fullpath TYPE string,
       lv_line     TYPE string.
 
 START-OF-SELECTION.
+A
+  SELECT obj_name
+    FROM tadir
+    INTO TABLE @lt_reports
+    WHERE pgmid    = 'R3TR'
+      AND object   = 'PROG'
+      AND ( obj_name LIKE 'Z%' OR obj_name LIKE 'Y%' )
+    ORDER BY obj_name.
 
-  SELECT
-    request~trkorr      AS request,
-    description~as4text AS description
-    FROM e070 AS request
-    LEFT OUTER JOIN e07t AS description
-      ON request~trkorr = description~trkorr
-    WHERE request~trfunction = 'K'
-      AND request~trstatus   = 'D'
-    ORDER BY request~trkorr
-    INTO TABLE @lt_requests.
-
-  IF sy-subrc <> 0 OR lt_requests IS INITIAL.
-    MESSAGE 'Nenhuma request encontrada.' TYPE 'S' DISPLAY LIKE 'W'.
+  IF sy-subrc <> 0 OR lt_reports IS INITIAL.
+    MESSAGE 'Nenhum report Z ou Y encontrado na TADIR.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_requests INTO ls_request.
+  LOOP AT lt_reports INTO ls_report.
     CLEAR lv_line.
-
-    IF ls_request-description IS INITIAL.
-      lv_line = ls_request-request.
-    ELSE.
-      lv_line = |{ ls_request-request } ; { ls_request-description }|.
-    ENDIF.
-
+    lv_line = ls_report-obj_name.
     APPEND lv_line TO lt_output.
   ENDLOOP.
 
-  lv_fullpath = 'C:\temp\workbench_requests.txt'.
+  lv_fullpath = 'C:\temp\reports.txt'.
 
   CALL METHOD cl_gui_frontend_services=>gui_download
     EXPORTING
@@ -77,7 +67,7 @@ START-OF-SELECTION.
       OTHERS                  = 22.
 
   IF sy-subrc = 0.
-    MESSAGE |{ lines( lt_output ) } requests baixadas em { lv_fullpath }| TYPE 'S'.
+    MESSAGE |{ lines( lt_output ) } reports Z/Y baixados em { lv_fullpath }| TYPE 'S'.
   ELSE.
     MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
   ENDIF.
