@@ -48,9 +48,15 @@ session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "Z_BUSCA_REPORTS"
 session.findById("wnd[0]").sendVKey 8
 WScript.Sleep 500
 
+' Tenta setar P_PROG e executar; se nao existir, programa ja rodou com defaults
+On Error Resume Next
 session.findById("wnd[0]/usr/txtP_PROG").Text = fileName
-session.findById("wnd[0]/usr/txtP_PROG").caretPosition = Len(fileName)
-session.findById("wnd[0]").sendVKey 8
+If Err.Number = 0 Then
+    session.findById("wnd[0]/usr/txtP_PROG").caretPosition = Len(fileName)
+    session.findById("wnd[0]").sendVKey 8
+End If
+Err.Clear
+On Error GoTo 0
 
 ' ---- Aguarda o txt ser gerado ----
 WScript.Sleep 2000
