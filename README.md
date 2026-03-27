@@ -1,81 +1,83 @@
-' ============================================================
-' buscarProgSap.vbs
-' Le o codigo fonte de um programa ABAP existente via SE38
-' e retorna via WScript.Echo (stdout) com \n como separador
-'
-' Programa fixo:
-'   Z05_TESTE_1
-' ============================================================
-Option Explicit
+*&---------------------------------------------------------------------*
+*& Report Z_BUSCA_REQUESTS
+*&---------------------------------------------------------------------*
+REPORT z_busca_requests.
 
-Dim SapGuiAuto, application, connection, session
-If Not IsObject(application) Then
-    Set SapGuiAuto  = GetObject("SAPGUI")
-    Set application = SapGuiAuto.GetScriptingEngine
-End If
-If Not IsObject(connection) Then
-    Set connection = application.Children(0)
-End If
-If Not IsObject(session) Then
-    Set session = connection.Children(0)
-End If
+TYPES: BEGIN OF ty_request,
+         request     TYPE e070-trkorr,
+         description TYPE e07t-as4text,
+       END OF ty_request.
 
-Dim programName
-programName = "Z05_TESTE_1"
+DATA: lt_requests TYPE STANDARD TABLE OF ty_request,
+      ls_request  TYPE ty_request,
+      lt_output   TYPE STANDARD TABLE OF string,
+      lv_fullpath TYPE string,
+      lv_line     TYPE string.
 
-' ---- Navegar para SE38 e abrir o editor do programa -------------
-session.findById("wnd[0]").maximize
-session.findById("wnd[0]/tbar[0]/okcd").text = "/nse38"
-session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 800
+START-OF-SELECTION.
 
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = programName
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").caretPosition = Len(programName)
-WScript.Sleep 200
-session.findById("wnd[0]").sendVKey 0  ' Enter abre o editor
-WScript.Sleep 1000
+  SELECT
+    request~trkorr      AS request,
+    description~as4text AS description
+    FROM e070 AS request
+    LEFT OUTER JOIN e07t AS description
+      ON request~trkorr = description~trkorr
+    WHERE request~trfunction = 'K'
+      AND request~trstatus   = 'D'
+    ORDER BY request~trkorr
+    INTO TABLE @lt_requests.
 
-' ---- Tentativa 1: currentContent --------------------------------
-Dim sourceCode
-sourceCode = ""
-On Error Resume Next
-sourceCode = session.findById("wnd[0]/usr/cntlEDITOR/shellcont/shell").currentContent
-On Error GoTo 0
+  IF sy-subrc <> 0 OR lt_requests IS INITIAL.
+    MESSAGE 'Nenhuma request encontrada.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
 
-' ---- Tentativa 2: export via menu (Download) --------------------
-If Trim(sourceCode) = "" Then
-    Dim fso, tempPath, fRead
-    Set fso  = CreateObject("Scripting.FileSystemObject")
-    tempPath = fso.GetSpecialFolder(2) & "\sap_export_" & programName & ".txt"
+  LOOP AT lt_requests INTO ls_request.
+    CLEAR lv_line.
 
-    On Error Resume Next
-    session.findById("wnd[0]/mbar/menu[3]/menu[7]/menu[1]/menu[1]").Select
-    WScript.Sleep 800
-    session.findById("wnd[1]/usr/ctxtDY_PATH").text     = fso.GetSpecialFolder(2) & "\"
-    session.findById("wnd[1]/usr/ctxtDY_FILENAME").text = "sap_export_" & programName & ".txt"
-    session.findById("wnd[1]/tbar[0]/btn[0]").press
-    On Error GoTo 0
-    WScript.Sleep 800
+    IF ls_request-description IS INITIAL.
+      lv_line = ls_request-request.
+    ELSE.
+      lv_line = |{ ls_request-request } ; { ls_request-description }|.
+    ENDIF.
 
-    If fso.FileExists(tempPath) Then
-        Set fRead  = fso.OpenTextFile(tempPath, 1, False)
-        sourceCode = fRead.ReadAll
-        fRead.Close
-        On Error Resume Next
-        fso.DeleteFile tempPath
-        On Error GoTo 0
-    End If
-End If
+    APPEND lv_line TO lt_output.
+  ENDLOOP.
 
-If Trim(sourceCode) = "" Then
-    WScript.StdErr.Write "not found: Programa " & programName & " nao encontrado ou sem codigo."
-    WScript.Quit 1
-End If
+  lv_fullpath = 'C:\temp\workbench_requests.txt'.
 
-' ---- Codificar quebras de linha para transporte -----------------
-sourceCode = Replace(sourceCode, vbCrLf, "\n")
-sourceCode = Replace(sourceCode, vbCr,   "\n")
-sourceCode = Replace(sourceCode, vbLf,   "\n")
+  CALL METHOD cl_gui_frontend_services=>gui_download
+    EXPORTING
+      filename                = lv_fullpath
+      filetype                = 'ASC'
+    CHANGING
+      data_tab                = lt_output
+    EXCEPTIONS
+      file_write_error        = 1
+      no_batch                = 2
+      gui_refuse_filetransfer = 3
+      invalid_type            = 4
+      no_authority            = 5
+      unknown_error           = 6
+      header_not_allowed      = 7
+      separator_not_allowed   = 8
+      filesize_not_allowed    = 9
+      header_too_long         = 10
+      dp_error_create         = 11
+      dp_error_send           = 12
+      dp_error_write          = 13
+      unknown_dp_error        = 14
+      access_denied           = 15
+      dp_out_of_memory        = 16
+      disk_full               = 17
+      dp_timeout              = 18
+      file_not_found          = 19
+      dataprovider_exception  = 20
+      control_flush_error     = 21
+      OTHERS                  = 22.
 
-WScript.Echo sourceCode
-WScript.Quit 0
+  IF sy-subrc = 0.
+    MESSAGE |{ lines( lt_output ) } requests baixadas em { lv_fullpath }| TYPE 'S'.
+  ELSE.
+    MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
+  ENDIF.
