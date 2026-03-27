@@ -1,3 +1,9 @@
+Option Explicit
+
+Dim SapGuiAuto, application, connection, session
+Dim fileName
+Dim fso, filePath, fRead, conteudo
+
 If Not IsObject(application) Then
     Set SapGuiAuto = GetObject("SAPGUI")
     Set application = SapGuiAuto.GetScriptingEngine
@@ -16,23 +22,20 @@ If IsObject(WScript) Then
     WScript.ConnectObject application, "on"
 End If
 
-Dim fileName
 fileName = "reports"
 
 session.findById("wnd[0]").maximize
-session.findById("wnd[0]/tbar[0]/okcd").text = "/nse38"
+session.findById("wnd[0]/tbar[0]/okcd").Text = "/nse38"
 session.findById("wnd[0]").sendVKey 0
 
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").text = "z_busca_reports"
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "z_busca_reports"
 session.findById("wnd[0]").sendVKey 8
 
-' ---- Aguarda download completar ----
+' ---- Aguarda o report terminar e o txt ser gerado ----
 WScript.Sleep 2000
 
 ' ---- Agora le o arquivo baixado em C:\temp ----
-Dim fso, filePath, fRead, conteudo
 Set fso = CreateObject("Scripting.FileSystemObject")
-
 filePath = "C:\temp\" & fileName & ".txt"
 
 If Not fso.FileExists(filePath) Then
