@@ -77,3 +77,7 @@ session.findById("wnd[0]/tbar[0]/btn[11]").press
 Pause 0.5
 
 session.findById("wnd[0]").sendVKey 27
+Pause 1.5
+
+session.findById("wnd[0]").sendVKey 3
+session.findById("wnd[0]").sendVKey 3
