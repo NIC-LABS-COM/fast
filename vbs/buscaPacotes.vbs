@@ -1,68 +1,70 @@
-' ============================================================
-' buscaPackages.vbs
-' Executa programa ABAP Z_BUSCA_PACKAGES que gera arquivo
-' em C:\temp\packages_tdevc.txt, depois le o conteudo
-' e retorna via stdout.
-' ============================================================
 Option Explicit
 
-Dim SapGuiAuto, application, connection, session
-Dim fso, filePath, fRead, conteudo
+Dim SapGuiAuto
+Dim application
+Dim connection
+Dim session
+Dim i
+Dim fso
+Dim filePath
 
-Set SapGuiAuto = GetObject("SAPGUI")
-Set application = SapGuiAuto.GetScriptingEngine
-Set connection = application.Children(0)
-Set session = connection.Children(0)
+Const REPORT_NAME = "Z_GET_ALL_PACKAGES"
+Const FILE_PATH   = "C:\temp\packages_tdevc.txt"
+
+Sub WaitSeconds(seconds)
+    Dim startTime
+    startTime = Timer
+
+    Do While Timer < startTime + seconds
+    Loop
+End Sub
+
+If Not IsObject(application) Then
+    Set SapGuiAuto = GetObject("SAPGUI")
+    Set application = SapGuiAuto.GetScriptingEngine
+End If
+
+If Not IsObject(connection) Then
+    Set connection = application.Children(0)
+End If
+
+If Not IsObject(session) Then
+    Set session = connection.Children(0)
+End If
 
 session.findById("wnd[0]").maximize
 
-' ---- Vai para SE38 ----
+' Vai para SE38
 session.findById("wnd[0]/tbar[0]/okcd").Text = "/NSE38"
 session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 1000
+Call WaitSeconds(1)
 
-' ---- Informa o programa ----
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "Z_BUSCA_PACKAGES"
+' Informa o report
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = REPORT_NAME
 session.findById("wnd[0]").sendVKey 8
-WScript.Sleep 3000
+Call WaitSeconds(3)
 
-' ---- Caso apareça popup/mensagem, tenta fechar ----
+' Se aparecer popup, tenta fechar
 On Error Resume Next
-If session.Children.Count > 1 Then
-    session.findById("wnd[1]/tbar[0]/btn[0]").press
-    WScript.Sleep 500
-End If
+session.findById("wnd[1]/tbar[0]/btn[0]").press
 Err.Clear
 On Error GoTo 0
 
-' ---- Le o arquivo gerado ----
+Call WaitSeconds(1)
+
+' Verifica se o arquivo foi gerado
 Set fso = CreateObject("Scripting.FileSystemObject")
-filePath = "C:\temp\packages_tdevc.txt"
+filePath = FILE_PATH
 
-If Not fso.FileExists(filePath) Then
-    WScript.StdErr.Write "Arquivo nao encontrado apos execucao do report: " & filePath
-    WScript.Quit 1
+For i = 1 To 10
+    If fso.FileExists(filePath) Then
+        Exit For
+    End If
+    Call WaitSeconds(1)
+Next
+
+If fso.FileExists(filePath) Then
+    MsgBox "Arquivo gerado com sucesso: " & filePath
+Else
+    MsgBox "Arquivo nao encontrado: " & filePath
 End If
-
-On Error Resume Next
-Set fRead = fso.OpenTextFile(filePath, 1, False)
-If Err.Number <> 0 Then
-    WScript.StdErr.Write "Erro ao abrir arquivo: " & filePath & " | " & Err.Description
-    WScript.Quit 1
-End If
-On Error GoTo 0
-
-conteudo = fRead.ReadAll
-fRead.Close
-
-If Trim(conteudo) = "" Then
-    WScript.StdErr.Write "Arquivo encontrado mas esta vazio: " & filePath
-    WScript.Quit 1
-End If
-
-conteudo = Replace(conteudo, vbCrLf, "\n")
-conteudo = Replace(conteudo, vbCr, "\n")
-conteudo = Replace(conteudo, vbLf, "\n")
-
-WScript.Echo conteudo
-WScript.Quit 0
