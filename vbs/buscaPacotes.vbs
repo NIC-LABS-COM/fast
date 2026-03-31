@@ -1,70 +1,43 @@
 ' ============================================================
-' buscaReports.vbs
-' Executa programa ABAP Z_BUSCA_REPORTS que gera arquivo
-' em C:\temp, depois le o conteudo e retorna via stdout.
-'
-' Argumentos:
-'   0: fileName - Nome do arquivo sem extensao (default: reports)
-'
-' Saida:
-'   stdout: conteudo do arquivo (capturado pelo ConsumerTT)
+' buscaPackages.vbs
+' Executa programa ABAP Z_BUSCA_PACKAGES que gera arquivo
+' em C:\temp\packages_tdevc.txt, depois le o conteudo
+' e retorna via stdout.
 ' ============================================================
 Option Explicit
 
 Dim SapGuiAuto, application, connection, session
-Dim fileName
 Dim fso, filePath, fRead, conteudo
 
-If Not IsObject(application) Then
-    Set SapGuiAuto = GetObject("SAPGUI")
-    Set application = SapGuiAuto.GetScriptingEngine
-End If
+Set SapGuiAuto = GetObject("SAPGUI")
+Set application = SapGuiAuto.GetScriptingEngine
+Set connection = application.Children(0)
+Set session = connection.Children(0)
 
-If Not IsObject(connection) Then
-    Set connection = application.Children(0)
-End If
-
-If Not IsObject(session) Then
-    Set session = connection.Children(0)
-End If
-
-fileName = ""
-
-If WScript.Arguments.Count >= 1 Then
-    fileName = Trim(CStr(WScript.Arguments(0)))
-End If
-
-If fileName = "" Then
-    fileName = "reports"
-End If
-
-' ---- Executa programa ABAP na SE38 ----
 session.findById("wnd[0]").maximize
-session.findById("wnd[0]/tbar[0]/okcd").Text = "se38"
+
+' ---- Vai para SE38 ----
+session.findById("wnd[0]/tbar[0]/okcd").Text = "/NSE38"
 session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 500
+WScript.Sleep 1000
 
-session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "Z_GET_ALL_PACKAGES"
+' ---- Informa o programa ----
+session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = "Z_BUSCA_PACKAGES"
 session.findById("wnd[0]").sendVKey 8
-WScript.Sleep 500
+WScript.Sleep 3000
 
-' Tenta setar P_PROG e executar; se nao existir, programa ja rodou com defaults
+' ---- Caso apareça popup/mensagem, tenta fechar ----
 On Error Resume Next
-session.findById("wnd[0]/usr/txtP_PROG").Text = fileName
-If Err.Number = 0 Then
-    session.findById("wnd[0]/usr/txtP_PROG").caretPosition = Len(fileName)
-    session.findById("wnd[0]").sendVKey 8
+If session.Children.Count > 1 Then
+    session.findById("wnd[1]/tbar[0]/btn[0]").press
+    WScript.Sleep 500
 End If
 Err.Clear
 On Error GoTo 0
 
-' ---- Aguarda o txt ser gerado ----
-WScript.Sleep 2000
-session.findById("wnd[0]/tbar[0]/okcd").Text = "/NSE123"
-
-' ---- Le o arquivo em C:\temp ----
+' ---- Le o arquivo gerado ----
 Set fso = CreateObject("Scripting.FileSystemObject")
-filePath = "C:\temp\" & fileName & ".txt"
+filePath = "C:\temp\packages_tdevc.txt"
 
 If Not fso.FileExists(filePath) Then
     WScript.StdErr.Write "Arquivo nao encontrado apos execucao do report: " & filePath
