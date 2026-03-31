@@ -1,0 +1,15 @@
+[2026-03-31 13:38:01] ##################################################
+[2026-03-31 13:38:01] CONSUMER INICIADO
+[2026-03-31 13:38:01] Fila legado   : queue_vpn_usiminas
+[2026-03-31 13:38:01] Filas v1      : q.usiminas.v1, q.niclabs.v1
+[2026-03-31 13:38:01] Exchange v1   : x.to-client.topic
+[2026-03-31 13:38:01] Binding v1    : usiminas.req.#.v1
+[2026-03-31 13:38:01] Fila respostas: queue_vpn_respostas
+[2026-03-31 13:38:01] Host          : jackal.rmq.cloudamqp.com
+[2026-03-31 13:38:01] ##################################################
+[2026-03-31 13:38:02] Exchange declarado/verificado: x.to-client.topic (topic, durable, auto_delete=False)
+[2026-03-31 13:38:02] Binding registrado: x.to-client.topic -> q.usiminas.v1 [usiminas.req.#.v1]
+[2026-03-31 13:38:02] Binding registrado: x.to-client.topic -> q.niclabs.v1 [usiminas.req.#.v1]
+[2026-03-31 13:38:02] Escutando filas: 'queue_vpn_usiminas' e 'q.usiminas.v1, q.niclabs.v1' (CTRL+C para sair)
+[2026-03-31 13:38:07] Consumer encerrado pelo usuario.
+[2026-03-31 13:38:07] Conexao encerrada.
