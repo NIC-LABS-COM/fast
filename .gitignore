@@ -6,3 +6,5 @@ build/
 dist/*
 !dist/ConsumerTT.exe
 *.spec
+front/log
+config.py

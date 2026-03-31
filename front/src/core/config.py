@@ -14,7 +14,7 @@ LOG_DIR = os.path.join(BASE_DIR, "Log")
 # RabbitMQ
 RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "jackal.rmq.cloudamqp.com")
 RABBITMQ_USER = os.environ.get("RABBITMQ_USER", "rhrstugr")
-RABBITMQ_PASS = os.environ.get("RABBITMQ_PASS", "")
+RABBITMQ_PASS = os.environ.get("RABBITMQ_PASS", "HC2wvtBtou_DUk9AA276209T4718K9cF")
 RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST", "rhrstugr")
 QUEUE_COMMANDS = "queue_vpn_usiminas"
 QUEUE_RESPONSES = "queue_vpn_respostas"
