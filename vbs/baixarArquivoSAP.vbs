@@ -61,6 +61,8 @@ filePath = "C:\temp\" & fileName & ".txt"
 
 ' Verifica se arquivo existe
 If Not fso.FileExists(filePath) Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Arquivo nao encontrado apos download: " & filePath
     WScript.Quit 1
 End If
@@ -69,6 +71,8 @@ End If
 On Error Resume Next
 Set fRead = fso.OpenTextFile(filePath, 1, False)
 If Err.Number <> 0 Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Erro ao abrir arquivo: " & filePath & " | " & Err.Description
     WScript.Quit 1
 End If
@@ -78,9 +82,15 @@ conteudo = fRead.ReadAll
 fRead.Close
 
 If Trim(conteudo) = "" Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Arquivo encontrado mas esta vazio: " & filePath
     WScript.Quit 1
 End If
+
+' Volta para tela inicial SAP
+session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+session.findById("wnd[0]").sendVKey 0
 
 ' ---- Codifica quebras de linha para transporte ----
 conteudo = Replace(conteudo, vbCrLf, "\n")

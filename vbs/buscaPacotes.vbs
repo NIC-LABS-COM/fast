@@ -59,6 +59,8 @@ For i = 1 To 10
 Next
 
 If Not fso.FileExists(filePath) Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Arquivo nao encontrado apos execucao: " & filePath
     WScript.Quit 1
 End If
@@ -67,6 +69,8 @@ End If
 On Error Resume Next
 Set fRead = fso.OpenTextFile(filePath, 1, False)
 If Err.Number <> 0 Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Erro ao abrir arquivo: " & filePath & " | " & Err.Description
     WScript.Quit 1
 End If
@@ -76,9 +80,15 @@ conteudo = fRead.ReadAll
 fRead.Close
 
 If Trim(conteudo) = "" Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Arquivo encontrado mas esta vazio: " & filePath
     WScript.Quit 1
 End If
+
+' Volta para tela inicial SAP
+session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+session.findById("wnd[0]").sendVKey 0
 
 conteudo = Replace(conteudo, vbCrLf, "\n")
 conteudo = Replace(conteudo, vbCr, "\n")
