@@ -145,6 +145,10 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
             return [",".join(r.strip() for r in requests if r.strip())]
         return [str(requests).strip()]
 
+    if routing_key == "query.request.description.v1":
+        request_id = payload.get("requestId", "").strip().upper()
+        return [request_id]
+
     return None
 
 
@@ -343,6 +347,38 @@ def process_query_request_files(channel, payload: dict, vbs_url: str) -> None:
     publish_query_response(channel, reply_to, data, correlation_id)
 
 
+def process_query_request_description(channel, payload: dict, vbs_url: str) -> None:
+    correlation_id = payload.get("correlationId", "")
+    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
+    request_id     = payload.get("requestId", "").strip().upper()
+
+    log(f"[QUERY] query.request.description.v1 | requestId={request_id} | correlationId={correlation_id}")
+
+    if not request_id:
+        log("[QUERY] FALHA: requestId ausente no payload")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    vbs_path = download_vbs(vbs_url)
+    if vbs_path is None:
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    ok, details = execute_vbs(vbs_path, [request_id])
+
+    if not ok:
+        log(f"[QUERY] FALHA: query.request.description.v1: {details}")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    description = details.replace("\\n", "").strip()
+    # Report envolve em aspas: "descricao" — remove-las
+    if description.startswith('"') and description.endswith('"'):
+        description = description[1:-1]
+    log(f"[QUERY] SUCESSO: query.request.description.v1 - {request_id} = {description}")
+    publish_string_response(channel, reply_to, description, correlation_id)
+
+
 def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
@@ -478,6 +514,8 @@ def callback_v1(ch, method, properties, body):
             process_query_file_category(ch, payload, vbs_url)
         elif command == "query.request.files.v1":
             process_query_request_files(ch, payload, vbs_url)
+        elif command == "query.request.description.v1":
+            process_query_request_description(ch, payload, vbs_url)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:

@@ -1,0 +1,180 @@
+REPORT z_get_request_description.
+
+************************************************************************
+* Seleção
+************************************************************************
+PARAMETERS: p_req TYPE e070-trkorr OBLIGATORY.
+
+CONSTANTS: gc_path TYPE string VALUE 'C:\temp\request_description.txt'.
+
+************************************************************************
+* Tipos
+************************************************************************
+TYPES: BEGIN OF ty_output,
+         line TYPE string,
+       END OF ty_output.
+
+TYPES tt_output TYPE STANDARD TABLE OF ty_output WITH DEFAULT KEY.
+
+************************************************************************
+* Exceção
+************************************************************************
+CLASS lcx_app DEFINITION INHERITING FROM cx_static_check.
+  PUBLIC SECTION.
+    DATA mv_text TYPE string.
+    METHODS constructor IMPORTING iv_text TYPE string.
+ENDCLASS.
+
+CLASS lcx_app IMPLEMENTATION.
+  METHOD constructor.
+    super->constructor( ).
+    mv_text = iv_text.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Serviço
+************************************************************************
+CLASS lcl_service DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS get_request_description
+      IMPORTING iv_request            TYPE e070-trkorr
+      RETURNING VALUE(rv_description) TYPE string
+      RAISING   lcx_app.
+ENDCLASS.
+
+CLASS lcl_service IMPLEMENTATION.
+
+  METHOD get_request_description.
+    DATA: lv_text_e07t TYPE e07t-as4text,
+          lv_exists    TYPE e070-trkorr,
+          lo_exc       TYPE REF TO lcx_app.
+
+    CLEAR rv_description.
+
+*--------------------------------------------------------------------*
+* 1) Texto por idioma
+*--------------------------------------------------------------------*
+    SELECT SINGLE as4text
+      INTO lv_text_e07t
+      FROM e07t
+      WHERE trkorr = iv_request
+        AND langu  = sy-langu.
+
+    IF sy-subrc = 0 AND lv_text_e07t IS NOT INITIAL.
+      rv_description = lv_text_e07t.
+      RETURN.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* 2) Validar se a request existe em E070
+*--------------------------------------------------------------------*
+    SELECT SINGLE trkorr
+      INTO lv_exists
+      FROM e070
+      WHERE trkorr = iv_request.
+
+    IF sy-subrc = 0.
+      rv_description = ''.
+      RETURN.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* 3) Não encontrado
+*--------------------------------------------------------------------*
+    CREATE OBJECT lo_exc
+      EXPORTING
+        iv_text = 'Descricao da request nao encontrada'.
+
+    RAISE EXCEPTION lo_exc.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Writer
+************************************************************************
+CLASS lcl_writer DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS write_file
+      IMPORTING iv_description TYPE string
+      RAISING   lcx_app.
+ENDCLASS.
+
+CLASS lcl_writer IMPLEMENTATION.
+
+  METHOD write_file.
+    DATA: lt_lines TYPE tt_output,
+          ls_line  TYPE ty_output,
+          lv_json  TYPE string,
+          lo_exc   TYPE REF TO lcx_app.
+
+    CLEAR: lt_lines, ls_line, lv_json.
+
+    CONCATENATE '"' iv_description '"' INTO lv_json.
+
+    ls_line-line = lv_json.
+    APPEND ls_line TO lt_lines.
+
+    CALL METHOD cl_gui_frontend_services=>gui_download
+      EXPORTING
+        filename                = gc_path
+        filetype                = 'ASC'
+      CHANGING
+        data_tab                = lt_lines
+      EXCEPTIONS
+        file_write_error        = 1
+        no_batch                = 2
+        gui_refuse_filetransfer = 3
+        invalid_type            = 4
+        no_authority            = 5
+        unknown_error           = 6
+        header_not_allowed      = 7
+        separator_not_allowed   = 8
+        filesize_not_allowed    = 9
+        header_too_long         = 10
+        dp_error_create         = 11
+        dp_error_send           = 12
+        dp_error_write          = 13
+        unknown_dp_error        = 14
+        access_denied           = 15
+        dp_out_of_memory        = 16
+        disk_full               = 17
+        dp_timeout              = 18
+        file_not_found          = 19
+        dataprovider_exception  = 20
+        control_flush_error     = 21
+        not_supported_by_gui    = 22
+        error_no_gui            = 23
+        OTHERS                  = 24.
+
+    IF sy-subrc <> 0.
+      CREATE OBJECT lo_exc
+        EXPORTING
+          iv_text = 'Erro ao gerar arquivo da descricao da request'.
+
+      RAISE EXCEPTION lo_exc.
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Execução
+************************************************************************
+START-OF-SELECTION.
+  DATA: lv_description TYPE string,
+        lo_exc         TYPE REF TO lcx_app.
+
+  TRY.
+      lv_description = lcl_service=>get_request_description( p_req ).
+
+      lcl_writer=>write_file( lv_description ).
+
+      MESSAGE 'Arquivo JSON gerado com sucesso' TYPE 'S'.
+
+    CATCH lcx_app INTO lo_exc.
+      MESSAGE lo_exc->mv_text TYPE 'E'.
+  ENDTRY.

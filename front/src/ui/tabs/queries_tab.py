@@ -57,6 +57,7 @@ class QueriesTab(ttk.Frame):
         self._build_versions_tab()
         self._build_category_tab()
         self._build_request_files_tab()
+        self._build_request_description_tab()
 
     # ---- Requests ----
     def _build_requests_tab(self) -> None:
@@ -191,6 +192,29 @@ class QueriesTab(ttk.Frame):
         self._reqfiles_result = _make_result_panel(tab)
         self._result_panels.append(self._reqfiles_result)
 
+    # ---- Request Description ----
+    def _build_request_description_tab(self) -> None:
+        tab = ttk.Frame(self._notebook, padding=12)
+        self._notebook.add(tab, text="  Request Description  ")
+
+        top = ttk.Frame(tab)
+        top.pack(fill=tk.X)
+
+        ttk.Label(top, text="Request ID:").pack(side=tk.LEFT)
+        self._reqdesc_var = tk.StringVar()
+        ttk.Entry(top, textvariable=self._reqdesc_var, width=30).pack(side=tk.LEFT, padx=(4, 12))
+
+        self._btn_request_desc = ttk.Button(
+            top, text="Buscar Descrição", command=self._query_request_description, width=18,
+        )
+        self._btn_request_desc.pack(side=tk.LEFT, padx=(4, 0))
+
+        ttk.Button(top, text="Limpar", width=10,
+                   command=lambda: self._clear_panel(self._reqdesc_result)).pack(side=tk.RIGHT)
+
+        self._reqdesc_result = _make_result_panel(tab)
+        self._result_panels.append(self._reqdesc_result)
+
     # ------------------------------------------------------------------ #
     #  Acoes
     # ------------------------------------------------------------------ #
@@ -315,6 +339,28 @@ class QueriesTab(ttk.Frame):
         self._btn_request_files.configure(state=tk.DISABLED)
         self._on_publish_v1(v1_data)
         self._btn_request_files.configure(state=tk.NORMAL)
+
+    def _query_request_description(self) -> None:
+        request_id = self._reqdesc_var.get().strip()
+        if not request_id:
+            messagebox.showwarning("Atenção", "Informe o Request ID.")
+            return
+
+        correlation_id = str(uuid.uuid4())
+        v1_data = {
+            "payload": {
+                "requestId": request_id,
+                "correlationId": correlation_id,
+                "replyTo": "queue_vpn_respostas",
+            },
+            "routing_key": "usiminas.req.query.request.description.v1",
+            "correlation_id": correlation_id,
+        }
+        self._log_fn(f"Enviando query.request.description.v1 | requestId={request_id}")
+        self._set_status("Buscando descrição da request no SAP...")
+        self._btn_request_desc.configure(state=tk.DISABLED)
+        self._on_publish_v1(v1_data)
+        self._btn_request_desc.configure(state=tk.NORMAL)
 
     # ------------------------------------------------------------------ #
     #  Helpers
