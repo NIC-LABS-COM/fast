@@ -52,19 +52,34 @@ On Error GoTo 0
 
 Call WaitSeconds(1)
 
-' Verifica se o arquivo foi gerado
+' ---- Le o arquivo em C:\temp ----
 Set fso = CreateObject("Scripting.FileSystemObject")
-filePath = FILE_PATH
+filePath = "C:\temp\" & fileName & ".txt"
 
-For i = 1 To 10
-    If fso.FileExists(filePath) Then
-        Exit For
-    End If
-    Call WaitSeconds(1)
-Next
-
-If fso.FileExists(filePath) Then
-    MsgBox "Arquivo gerado com sucesso: " & filePath
-Else
-    MsgBox "Arquivo nao encontrado: " & filePath
+If Not fso.FileExists(filePath) Then
+    WScript.StdErr.Write "Arquivo nao encontrado apos execucao do report: " & filePath
+    WScript.Quit 1
 End If
+
+On Error Resume Next
+Set fRead = fso.OpenTextFile(filePath, 1, False)
+If Err.Number <> 0 Then
+    WScript.StdErr.Write "Erro ao abrir arquivo: " & filePath & " | " & Err.Description
+    WScript.Quit 1
+End If
+On Error GoTo 0
+
+conteudo = fRead.ReadAll
+fRead.Close
+
+If Trim(conteudo) = "" Then
+    WScript.StdErr.Write "Arquivo encontrado mas esta vazio: " & filePath
+    WScript.Quit 1
+End If
+
+conteudo = Replace(conteudo, vbCrLf, "\n")
+conteudo = Replace(conteudo, vbCr, "\n")
+conteudo = Replace(conteudo, vbLf, "\n")
+
+WScript.Echo conteudo
+WScript.Quit 0
