@@ -63,6 +63,26 @@ def publish_query_response(channel, reply_to: str, data: list,
         log(f"Erro ao publicar resposta QUERY: {traceback.format_exc()}")
 
 
+def publish_string_response(channel, reply_to: str, data: str,
+                            correlation_id: str = "") -> None:
+    """Publica resposta de query que retorna string simples."""
+    try:
+        body = json.dumps(data, ensure_ascii=False)
+        props = pika.BasicProperties(
+            delivery_mode=2,
+            correlation_id=correlation_id if correlation_id else None,
+            content_type="application/json",
+        )
+        channel.basic_publish(
+            exchange="", routing_key=reply_to,
+            body=body.encode("utf-8"),
+            properties=props,
+        )
+        log(f"Resposta STRING publicada em '{reply_to}': {body}")
+    except Exception:
+        log(f"Erro ao publicar resposta STRING: {traceback.format_exc()}")
+
+
 def publish_read_file_response(channel, reply_to: str, response: dict,
                                correlation_id: str = "") -> None:
     """Publica resposta de query.read.file.v1: {fileName, content} ou {error}."""
@@ -114,6 +134,10 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
         file_name = payload.get("fileName", "").strip().upper()
         category  = payload.get("category", "").strip().upper()
         return [file_name, category]
+
+    if routing_key == "query.file.category.v1":
+        file_name = payload.get("fileName", "").strip().upper()
+        return [file_name]
 
     return None
 
@@ -242,6 +266,35 @@ def process_query_versions_metadata(channel, payload: dict, vbs_url: str) -> Non
 
     log(f"[QUERY] SUCESSO: {len(data)} versoes encontradas")
     publish_query_response(channel, reply_to, data, correlation_id)
+
+
+def process_query_file_category(channel, payload: dict, vbs_url: str) -> None:
+    correlation_id = payload.get("correlationId", "")
+    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
+    file_name      = payload.get("fileName", "").strip().upper()
+
+    log(f"[QUERY] query.file.category.v1 | fileName={file_name} | correlationId={correlation_id}")
+
+    if not file_name:
+        log("[QUERY] FALHA: fileName ausente no payload")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    vbs_path = download_vbs(vbs_url)
+    if vbs_path is None:
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    ok, details = execute_vbs(vbs_path, [file_name])
+
+    if not ok:
+        log(f"[QUERY] FALHA: query.file.category.v1: {details}")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    category = details.replace("\\n", "").strip()
+    log(f"[QUERY] SUCESSO: query.file.category.v1 - {file_name} = {category}")
+    publish_string_response(channel, reply_to, category, correlation_id)
 
 
 def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
@@ -375,6 +428,8 @@ def callback_v1(ch, method, properties, body):
             process_query_all_packages(ch, payload, vbs_url)
         elif command == "query.versions.metadata.v1":
             process_query_versions_metadata(ch, payload, vbs_url)
+        elif command == "query.file.category.v1":
+            process_query_file_category(ch, payload, vbs_url)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:

@@ -60,6 +60,11 @@ class SapPublisherApp:
             self._queries_tab.display_response(response)
             return
 
+        # Formato Query: string simples (ex: query.file.category.v1)
+        if isinstance(response, str):
+            self._queries_tab.display_string_response(response)
+            return
+
         correlation_id = response.get("correlationId", "")
 
         # Formato V1 Fix/Create: {hasError, errorMessage, isCodeError, correlationId}

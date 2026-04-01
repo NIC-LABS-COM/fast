@@ -1,0 +1,241 @@
+REPORT z_get_category_by_file_name.
+
+************************************************************************
+* Seleção
+************************************************************************
+PARAMETERS: p_file TYPE sobj_name OBLIGATORY.
+
+CONSTANTS: gc_path TYPE string VALUE 'C:\temp\file_category.txt'.
+
+************************************************************************
+* Tipos
+************************************************************************
+TYPES: BEGIN OF ty_json_line,
+         line TYPE string,
+       END OF ty_json_line.
+
+TYPES tt_json_lines TYPE STANDARD TABLE OF ty_json_line WITH DEFAULT KEY.
+
+************************************************************************
+* Exceção
+************************************************************************
+CLASS lcx_app DEFINITION INHERITING FROM cx_static_check.
+  PUBLIC SECTION.
+    DATA mv_text TYPE string.
+    METHODS constructor IMPORTING iv_text TYPE string.
+ENDCLASS.
+
+CLASS lcx_app IMPLEMENTATION.
+  METHOD constructor.
+    super->constructor( ).
+    mv_text = iv_text.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Serviço
+************************************************************************
+CLASS lcl_service DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS get_category
+      IMPORTING iv_file TYPE sobj_name
+      RETURNING VALUE(rv_category) TYPE string
+      RAISING lcx_app.
+ENDCLASS.
+
+CLASS lcl_service IMPLEMENTATION.
+
+  METHOD get_category.
+
+    DATA: lv_func TYPE tfdir-funcname,
+          lv_obj  TYPE tadir-object,
+          lv_prog TYPE trdir-name,
+          lv_subc TYPE trdir-subc,
+          lo_exc  TYPE REF TO lcx_app.
+
+    CLEAR rv_category.
+
+*--------------------------------------------------------------------*
+* 1) FUNCTION MODULE (TFDIR)
+*--------------------------------------------------------------------*
+    SELECT SINGLE funcname
+      INTO lv_func
+      FROM tfdir
+      WHERE funcname = iv_file.
+
+    IF sy-subrc = 0.
+      rv_category = 'FUNCTION_MODULE'.
+      RETURN.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* 2) TADIR (principal)
+*--------------------------------------------------------------------*
+    SELECT SINGLE object
+      INTO lv_obj
+      FROM tadir
+      WHERE obj_name = iv_file
+        AND pgmid    = 'R3TR'.
+
+    IF sy-subrc = 0.
+
+      CASE lv_obj.
+        WHEN 'PROG'.
+          rv_category = 'PROGRAM'.
+
+        WHEN 'CLAS'.
+          rv_category = 'CLASS'.
+
+        WHEN 'INTF'.
+          rv_category = 'INTERFACE'.
+
+        WHEN 'FUGR'.
+          rv_category = 'FUNCTION_GROUP'.
+
+        WHEN 'TABL'.
+          rv_category = 'TABLE'.
+
+        WHEN 'DTEL'.
+          rv_category = 'DATA_ELEMENT'.
+
+        WHEN 'DOMA'.
+          rv_category = 'DOMAIN'.
+
+        WHEN 'DDLS'.
+          rv_category = 'CDS_VIEW'.
+
+        WHEN 'ENHO'.
+          rv_category = 'ENHANCEMENT'.
+
+        WHEN 'INDX'.
+          rv_category = 'INDEX'.
+
+        WHEN OTHERS.
+          rv_category = lv_obj.
+      ENDCASE.
+
+      RETURN.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* 3) TRDIR fallback (PROGRAM / INCLUDE)
+*--------------------------------------------------------------------*
+    CLEAR: lv_prog, lv_subc.
+
+    SELECT SINGLE name subc
+      INTO (lv_prog, lv_subc)
+      FROM trdir
+      WHERE name = iv_file.
+
+    IF sy-subrc = 0.
+
+      IF lv_subc = 'I'.
+        rv_category = 'INCLUDE'.
+      ELSE.
+        rv_category = 'PROGRAM'.
+      ENDIF.
+
+      RETURN.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* ERRO
+*--------------------------------------------------------------------*
+    CREATE OBJECT lo_exc
+      EXPORTING
+        iv_text = 'Objeto nao encontrado'.
+
+    RAISE EXCEPTION lo_exc.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Writer
+************************************************************************
+CLASS lcl_writer DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS write_file
+      IMPORTING iv_category TYPE string
+      RAISING lcx_app.
+ENDCLASS.
+
+CLASS lcl_writer IMPLEMENTATION.
+
+  METHOD write_file.
+
+    DATA: lv_json  TYPE string,
+          lt_lines TYPE tt_json_lines,
+          ls_line  TYPE ty_json_line,
+          lo_exc   TYPE REF TO lcx_app.
+
+    CLEAR: lv_json, lt_lines, ls_line.
+
+    CONCATENATE '"' iv_category '"' INTO lv_json.
+
+    ls_line-line = lv_json.
+    APPEND ls_line TO lt_lines.
+
+    CALL METHOD cl_gui_frontend_services=>gui_download
+      EXPORTING
+        filename = gc_path
+        filetype = 'ASC'
+      CHANGING
+        data_tab = lt_lines
+      EXCEPTIONS
+        file_write_error        = 1
+        no_batch                = 2
+        gui_refuse_filetransfer = 3
+        invalid_type            = 4
+        no_authority            = 5
+        unknown_error           = 6
+        header_not_allowed      = 7
+        separator_not_allowed   = 8
+        filesize_not_allowed    = 9
+        header_too_long         = 10
+        dp_error_create         = 11
+        dp_error_send           = 12
+        dp_error_write          = 13
+        unknown_dp_error        = 14
+        access_denied           = 15
+        dp_out_of_memory        = 16
+        disk_full               = 17
+        dp_timeout              = 18
+        file_not_found          = 19
+        dataprovider_exception  = 20
+        control_flush_error     = 21
+        not_supported_by_gui    = 22
+        error_no_gui            = 23
+        OTHERS                  = 24.
+
+    IF sy-subrc <> 0.
+      CREATE OBJECT lo_exc
+        EXPORTING
+          iv_text = 'Erro ao gerar arquivo'.
+
+      RAISE EXCEPTION lo_exc.
+    ENDIF.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Execução
+************************************************************************
+START-OF-SELECTION.
+
+  DATA: lv_category TYPE string,
+        lo_exc      TYPE REF TO lcx_app.
+
+  TRY.
+      lv_category = lcl_service=>get_category( p_file ).
+
+      lcl_writer=>write_file( lv_category ).
+
+      MESSAGE 'Arquivo JSON gerado com sucesso' TYPE 'S'.
+
+    CATCH lcx_app INTO lo_exc.
+      MESSAGE lo_exc->mv_text TYPE 'E'.
+  ENDTRY.
