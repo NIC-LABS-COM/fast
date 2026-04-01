@@ -25,6 +25,18 @@ def parse_requests_txt(raw_content: str) -> list[dict]:
     return results
 
 
+def parse_packages_txt(raw_content: str) -> list[dict]:
+    """Converte saida do buscaPacotes.vbs em lista de dicts com 'packageName'."""
+    text = raw_content.replace("\\n", "\n")
+    results: list[dict] = []
+    for line in text.splitlines():
+        package_name = line.strip()
+        if not package_name:
+            continue
+        results.append({"packageName": package_name})
+    return results
+
+
 def parse_reports_txt(raw_content: str) -> list[dict]:
     """Converte 'FILENAME ; CATEGORY ; PACKAGE ; FGROUP' ou apenas 'FILENAME' em lista de dicts."""
     text = raw_content.replace("\\n", "\n")

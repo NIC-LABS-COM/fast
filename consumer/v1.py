@@ -9,7 +9,7 @@ from .config import (
     QUEUE_RESPONSES, VBS_BY_ROUTING_KEY, QUERY_ROUTING_KEYS, ROUTING_KEY_PREFIX,
 )
 from .logger import log
-from .parsers import parse_requests_txt, parse_reports_txt
+from .parsers import parse_requests_txt, parse_reports_txt, parse_packages_txt
 from .vbs import download_vbs, execute_vbs
 
 
@@ -107,6 +107,9 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
     if routing_key == "query.all.files.v1":
         return []
 
+    if routing_key == "query.all.packages.v1":
+        return []
+
     return None
 
 
@@ -168,6 +171,35 @@ def process_query_all_files(channel, payload: dict, vbs_url: str) -> None:
         return
 
     log(f"[QUERY] SUCESSO: {len(data)} reports encontrados")
+    publish_query_response(channel, reply_to, data, correlation_id)
+
+
+def process_query_all_packages(channel, payload: dict, vbs_url: str) -> None:
+    correlation_id = payload.get("correlationId", "")
+    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
+
+    log(f"[QUERY] query.all.packages.v1 | correlationId={correlation_id}")
+
+    vbs_path = download_vbs(vbs_url)
+    if vbs_path is None:
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    ok, details = execute_vbs(vbs_path, [])
+
+    if not ok:
+        log(f"[QUERY] FALHA: query.all.packages.v1: {details}")
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    try:
+        data = parse_packages_txt(details)
+    except Exception as exc:
+        log(f"[QUERY] Erro no parsing do TXT: {exc}")
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    log(f"[QUERY] SUCESSO: {len(data)} pacotes encontrados")
     publish_query_response(channel, reply_to, data, correlation_id)
 
 
@@ -298,6 +330,8 @@ def callback_v1(ch, method, properties, body):
             process_query_requests(ch, payload, vbs_url)
         elif command == "query.all.files.v1":
             process_query_all_files(ch, payload, vbs_url)
+        elif command == "query.all.packages.v1":
+            process_query_all_packages(ch, payload, vbs_url)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:

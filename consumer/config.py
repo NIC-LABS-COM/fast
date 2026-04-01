@@ -33,14 +33,16 @@ VBS_BY_ROUTING_KEY: dict[str, str] = {
     "command.create.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptCriarSE38.vbs",
     "command.buscar.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscarProgSap.vbs",
     "query.read.file.v1":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/baixarArquivoSAP.vbs",
-    "query.requests.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscarRequests.vbs",
-    "query.all.files.v1":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaReports.vbs",
+    "query.requests.v1":      "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscarRequests.vbs",
+    "query.all.files.v1":     "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaReports.vbs",
+    "query.all.packages.v1":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaPacotes.vbs",
 }
 
 # Routing keys que sao queries (retornam dados estruturados)
 QUERY_ROUTING_KEYS: set[str] = {
     "query.requests.v1",
     "query.all.files.v1",
+    "query.all.packages.v1",
 }
 
 # Prefixo AMQP para extrair comando

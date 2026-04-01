@@ -38,6 +38,11 @@ class QueriesTab(ttk.Frame):
         )
         self._btn_reports.pack(side=tk.LEFT, padx=(0, 8))
 
+        self._btn_packages = ttk.Button(
+            btn_frame, text="Buscar Pacotes", command=self._query_packages, width=22,
+        )
+        self._btn_packages.pack(side=tk.LEFT, padx=(0, 8))
+
         ttk.Button(
             btn_frame, text="Limpar", command=self._clear, width=12,
         ).pack(side=tk.RIGHT)
@@ -93,6 +98,23 @@ class QueriesTab(ttk.Frame):
         self._btn_reports.configure(state=tk.DISABLED)
         self._on_publish_v1(v1_data)
         self._btn_reports.configure(state=tk.NORMAL)
+
+    def _query_packages(self) -> None:
+        import uuid
+        correlation_id = str(uuid.uuid4())
+        v1_data = {
+            "payload": {
+                "correlationId": correlation_id,
+                "replyTo": "queue_vpn_respostas",
+            },
+            "routing_key": "usiminas.req.query.all.packages.v1",
+            "correlation_id": correlation_id,
+        }
+        self._log_fn("Enviando query.all.packages.v1...")
+        self._set_status("Buscando pacotes do SAP...")
+        self._btn_packages.configure(state=tk.DISABLED)
+        self._on_publish_v1(v1_data)
+        self._btn_packages.configure(state=tk.NORMAL)
 
     def _clear(self) -> None:
         self._result_text.delete("1.0", tk.END)
