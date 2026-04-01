@@ -47,6 +47,29 @@ class QueriesTab(ttk.Frame):
             btn_frame, text="Limpar", command=self._clear, width=12,
         ).pack(side=tk.RIGHT)
 
+        # ---- Versions Metadata ----
+        versions_frame = ttk.LabelFrame(self, text="Versions Metadata")
+        versions_frame.pack(fill=tk.X, pady=(0, 8))
+
+        row = ttk.Frame(versions_frame)
+        row.pack(fill=tk.X, padx=8, pady=6)
+
+        ttk.Label(row, text="fileName:").pack(side=tk.LEFT)
+        self._ver_filename_var = tk.StringVar()
+        ttk.Entry(row, textvariable=self._ver_filename_var, width=30).pack(side=tk.LEFT, padx=(4, 12))
+
+        ttk.Label(row, text="category:").pack(side=tk.LEFT)
+        self._ver_category_var = tk.StringVar(value="PROGRAM")
+        ttk.Combobox(
+            row, textvariable=self._ver_category_var, width=20,
+            values=["PROGRAM", "FUNCTION_MODULE", "CLASS"], state="readonly",
+        ).pack(side=tk.LEFT, padx=(4, 12))
+
+        self._btn_versions = ttk.Button(
+            row, text="Buscar Versões", command=self._query_versions_metadata, width=18,
+        )
+        self._btn_versions.pack(side=tk.LEFT, padx=(4, 0))
+
         # ---- Painel de resultado no centro ----
         result_frame = ttk.LabelFrame(self, text="Retorno da Query")
         result_frame.pack(fill=tk.BOTH, expand=True)
@@ -115,6 +138,32 @@ class QueriesTab(ttk.Frame):
         self._btn_packages.configure(state=tk.DISABLED)
         self._on_publish_v1(v1_data)
         self._btn_packages.configure(state=tk.NORMAL)
+
+    def _query_versions_metadata(self) -> None:
+        file_name = self._ver_filename_var.get().strip()
+        category  = self._ver_category_var.get().strip()
+        if not file_name:
+            from tkinter import messagebox
+            messagebox.showwarning("Atenção", "Informe o fileName para buscar versões.")
+            return
+
+        import uuid
+        correlation_id = str(uuid.uuid4())
+        v1_data = {
+            "payload": {
+                "fileName": file_name,
+                "category": category,
+                "correlationId": correlation_id,
+                "replyTo": "queue_vpn_respostas",
+            },
+            "routing_key": "usiminas.req.query.versions.metadata.v1",
+            "correlation_id": correlation_id,
+        }
+        self._log_fn(f"Enviando query.versions.metadata.v1 | fileName={file_name} | category={category}")
+        self._set_status("Buscando versões do SAP...")
+        self._btn_versions.configure(state=tk.DISABLED)
+        self._on_publish_v1(v1_data)
+        self._btn_versions.configure(state=tk.NORMAL)
 
     def _clear(self) -> None:
         self._result_text.delete("1.0", tk.END)

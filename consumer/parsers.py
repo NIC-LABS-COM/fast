@@ -37,6 +37,42 @@ def parse_packages_txt(raw_content: str) -> list[dict]:
     return results
 
 
+def parse_versions_metadata_txt(raw_content: str) -> list[dict]:
+    """Converte JSON gerado pelo report Z_GET_VERSION_METADATA em lista de dicts.
+
+    O report ABAP usa /ui2/cl_json=>serialize com pretty_name=camel_case,
+    gerando JSON direto no arquivo. Campos esperados:
+    id, title, updated, request, fileName, category.
+    """
+    import json
+
+    text = raw_content.replace("\\n", "\n").strip()
+    if not text:
+        return []
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+
+    if not isinstance(data, list):
+        data = [data]
+
+    results: list[dict] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        results.append({
+            "id":       str(item.get("id", "")),
+            "title":    str(item.get("title", "")),
+            "updated":  str(item.get("updated", "")),
+            "request":  str(item.get("request", "")),
+            "fileName": str(item.get("fileName", item.get("file_name", ""))),
+            "category": str(item.get("category", "")),
+        })
+    return results
+
+
 def parse_reports_txt(raw_content: str) -> list[dict]:
     """Converte 'FILENAME ; CATEGORY ; PACKAGE ; FGROUP' ou apenas 'FILENAME' em lista de dicts."""
     text = raw_content.replace("\\n", "\n")

@@ -1,0 +1,554 @@
+REPORT z_get_version_metadata.
+
+************************************************************************
+* Seleção
+************************************************************************
+DATA: gv_dummy_file TYPE vrsd-objname,
+      gv_dummy_cat  TYPE char20.
+
+CONSTANTS:
+  gc_path TYPE string VALUE 'C:\temp\versions_metadata.txt'.
+
+SELECT-OPTIONS:
+  p_file FOR gv_dummy_file OBLIGATORY,
+  p_cat  FOR gv_dummy_cat  OBLIGATORY.
+
+************************************************************************
+* Tipos
+************************************************************************
+TYPES: BEGIN OF ty_version_raw,
+         version_no   TYPE vrsd-versno,
+         request      TYPE vrsd-korrnum,
+         request_text TYPE e07t-as4text,
+         datum        TYPE vrsd-datum,
+         uzeit        TYPE vrsd-zeit,
+         author       TYPE vrsd-author,
+         is_active    TYPE abap_bool,
+       END OF ty_version_raw.
+
+TYPES: BEGIN OF ty_response,
+         id        TYPE string,
+         title     TYPE string,
+         updated   TYPE string,
+         request   TYPE string,
+         file_name TYPE string,
+         category  TYPE string,
+       END OF ty_response.
+
+TYPES tt_version_raw TYPE STANDARD TABLE OF ty_version_raw WITH EMPTY KEY.
+TYPES tt_response    TYPE STANDARD TABLE OF ty_response    WITH EMPTY KEY.
+
+TYPES: BEGIN OF ty_object_key,
+         object_type TYPE vrsd-objtype,
+         object_name TYPE vrsd-objname,
+       END OF ty_object_key.
+
+TYPES: BEGIN OF ty_json_line,
+         line TYPE string,
+       END OF ty_json_line.
+
+TYPES tt_json_lines TYPE STANDARD TABLE OF ty_json_line WITH EMPTY KEY.
+
+************************************************************************
+* Exceção local
+************************************************************************
+CLASS lcx_app DEFINITION INHERITING FROM cx_static_check.
+  PUBLIC SECTION.
+    DATA mv_text TYPE string READ-ONLY.
+    METHODS constructor
+      IMPORTING
+        iv_text TYPE string.
+ENDCLASS.
+
+CLASS lcx_app IMPLEMENTATION.
+  METHOD constructor.
+    super->constructor( ).
+    mv_text = iv_text.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Resolver do objeto técnico
+************************************************************************
+CLASS lcl_object_resolver DEFINITION FINAL.
+  PUBLIC SECTION.
+    CLASS-METHODS resolve
+      IMPORTING
+        iv_file_name TYPE vrsd-objname
+        iv_category  TYPE char20
+      RETURNING
+        VALUE(rs_key) TYPE ty_object_key
+      RAISING
+        lcx_app.
+ENDCLASS.
+
+CLASS lcl_object_resolver IMPLEMENTATION.
+  METHOD resolve.
+    DATA lv_category TYPE char20.
+    DATA lv_pname    TYPE tfdir-pname.
+
+    lv_category = iv_category.
+    TRANSLATE lv_category TO UPPER CASE.
+
+    CASE lv_category.
+      WHEN 'PROGRAM' OR 'PROG' OR 'REPORT'.
+        rs_key-object_type = 'REPS'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'CLASS' OR 'CLAS'.
+        rs_key-object_type = 'CLAS'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'FUNCTION_MODULE' OR 'FUNC'.
+        SELECT SINGLE pname
+          INTO @lv_pname
+          FROM tfdir
+          WHERE funcname = @iv_file_name.
+
+        IF sy-subrc <> 0 OR lv_pname IS INITIAL.
+          RAISE EXCEPTION NEW lcx_app(
+            iv_text = |Function Module { iv_file_name } não encontrado na TFDIR| ).
+        ENDIF.
+
+        rs_key-object_type = 'REPS'.
+        rs_key-object_name = lv_pname.
+
+      WHEN 'FUNCTION_GROUP' OR 'FUGR'.
+        rs_key-object_type = 'FUGR'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'INTERFACE' OR 'INTF'.
+        rs_key-object_type = 'INTF'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'TABLE' OR 'TABL'.
+        rs_key-object_type = 'TABL'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'CDS_VIEW' OR 'DDLS'.
+        rs_key-object_type = 'DDLS'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'INCLUDE' OR 'INCL'.
+        rs_key-object_type = 'REPS'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'DOMAIN' OR 'DOMA'.
+        rs_key-object_type = 'DOMA'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'DATA_ELEMENT' OR 'DTEL'.
+        rs_key-object_type = 'DTEL'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'ENHANCEMENT' OR 'ENHO'.
+        rs_key-object_type = 'ENHO'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN 'INDEX' OR 'INDX'.
+        rs_key-object_type = 'INDX'.
+        rs_key-object_name = iv_file_name.
+
+      WHEN OTHERS.
+        RAISE EXCEPTION NEW lcx_app(
+          iv_text = |Categoria inválida: { iv_category }| ).
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Serviço de versões
+************************************************************************
+CLASS lcl_version_service DEFINITION FINAL.
+  PUBLIC SECTION.
+    CLASS-METHODS get_versions_multi
+      RETURNING
+        VALUE(rt_result) TYPE tt_response
+      RAISING
+        lcx_app.
+
+  PRIVATE SECTION.
+    CLASS-METHODS get_versions_single
+      IMPORTING
+        iv_file_name TYPE vrsd-objname
+        iv_category  TYPE char20
+      RETURNING
+        VALUE(rt_result) TYPE tt_response
+      RAISING
+        lcx_app.
+
+    CLASS-METHODS read_versions
+      IMPORTING
+        iv_object_type TYPE vrsd-objtype
+        iv_object_name TYPE vrsd-objname
+      RETURNING
+        VALUE(rt_raw) TYPE tt_version_raw.
+
+    CLASS-METHODS enrich_request_texts
+      CHANGING
+        ct_raw TYPE tt_version_raw.
+
+    CLASS-METHODS normalize_versions
+      CHANGING
+        ct_raw TYPE tt_version_raw.
+
+    CLASS-METHODS map_response
+      IMPORTING
+        it_raw       TYPE tt_version_raw
+        iv_file_name TYPE vrsd-objname
+        iv_category  TYPE char20
+      RETURNING
+        VALUE(rt_result) TYPE tt_response.
+
+    CLASS-METHODS map_category
+      IMPORTING
+        iv_category TYPE char20
+      RETURNING
+        VALUE(rv_category) TYPE string.
+
+    CLASS-METHODS format_datetime
+      IMPORTING
+        iv_datum TYPE sydatum
+        iv_uzeit TYPE syuzeit
+      RETURNING
+        VALUE(rv_datetime) TYPE string.
+
+    CLASS-METHODS format_id
+      IMPORTING
+        iv_version_no TYPE vrsd-versno
+      RETURNING
+        VALUE(rv_id) TYPE string.
+ENDCLASS.
+
+CLASS lcl_version_service IMPLEMENTATION.
+  METHOD get_versions_multi.
+    DATA lt_result_single TYPE tt_response.
+    DATA lv_found         TYPE abap_bool.
+
+    LOOP AT p_file INTO DATA(ls_file).
+      LOOP AT p_cat INTO DATA(ls_cat).
+        TRY.
+            lt_result_single = get_versions_single(
+              iv_file_name = CONV vrsd-objname( ls_file-low )
+              iv_category  = CONV char20( ls_cat-low ) ).
+
+            IF lt_result_single IS NOT INITIAL.
+              APPEND LINES OF lt_result_single TO rt_result.
+              lv_found = abap_true.
+            ENDIF.
+
+          CATCH lcx_app.
+            CONTINUE.
+        ENDTRY.
+      ENDLOOP.
+    ENDLOOP.
+
+    SORT rt_result BY file_name category updated DESCENDING request id.
+    DELETE ADJACENT DUPLICATES FROM rt_result COMPARING
+      id title updated request file_name category.
+
+    IF lv_found IS INITIAL OR rt_result IS INITIAL.
+      RAISE EXCEPTION NEW lcx_app(
+        iv_text = |Nenhuma versão encontrada para os filtros informados| ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD get_versions_single.
+    DATA ls_key TYPE ty_object_key.
+    DATA lt_raw TYPE tt_version_raw.
+
+    ls_key = lcl_object_resolver=>resolve(
+      iv_file_name = iv_file_name
+      iv_category  = iv_category ).
+
+    lt_raw = read_versions(
+      iv_object_type = ls_key-object_type
+      iv_object_name = ls_key-object_name ).
+
+    enrich_request_texts(
+      CHANGING
+        ct_raw = lt_raw ).
+
+    normalize_versions(
+      CHANGING
+        ct_raw = lt_raw ).
+
+    IF lt_raw IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    rt_result = map_response(
+      it_raw       = lt_raw
+      iv_file_name = iv_file_name
+      iv_category  = iv_category ).
+  ENDMETHOD.
+
+  METHOD read_versions.
+    DATA: lt_lversno     TYPE STANDARD TABLE OF vrsn,
+          lt_version_old TYPE STANDARD TABLE OF vrsd_old,
+          ls_version_old TYPE vrsd_old,
+          ls_raw         TYPE ty_version_raw,
+          lv_objname     TYPE vrsd_old-objname,
+          lv_objtype     TYPE vrsd_old-objtype.
+
+    lv_objname = iv_object_name.
+    lv_objtype = iv_object_type.
+
+    TRY.
+        CALL FUNCTION 'SVRS_GET_VERSION_DIRECTORY'
+          EXPORTING
+            objname      = lv_objname
+            objtype      = lv_objtype
+          TABLES
+            lversno_list = lt_lversno
+            version_list = lt_version_old
+          EXCEPTIONS
+            no_entry     = 1
+            OTHERS       = 2.
+      CATCH cx_sy_dyn_call_illegal_type.
+        RETURN.
+      CATCH cx_sy_dyn_call_param_not_found.
+        RETURN.
+      CATCH cx_sy_dyn_call_illegal_func.
+        RETURN.
+    ENDTRY.
+
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    LOOP AT lt_version_old INTO ls_version_old.
+      CLEAR ls_raw.
+
+      ls_raw-version_no = ls_version_old-versno.
+      ls_raw-request    = ls_version_old-korrnum.
+      ls_raw-datum      = ls_version_old-datum.
+      ls_raw-uzeit      = ls_version_old-zeit.
+      ls_raw-author     = ls_version_old-author.
+
+      IF ls_version_old-versno IS INITIAL.
+        ls_raw-is_active = abap_true.
+      ELSE.
+        ls_raw-is_active = abap_false.
+      ENDIF.
+
+      APPEND ls_raw TO rt_raw.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD enrich_request_texts.
+    LOOP AT ct_raw ASSIGNING FIELD-SYMBOL(<ls_raw>).
+      IF <ls_raw>-request IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      SELECT SINGLE as4text
+        INTO @<ls_raw>-request_text
+        FROM e07t
+        WHERE trkorr = @<ls_raw>-request
+          AND langu  = @sy-langu.
+
+      IF sy-subrc <> 0.
+        CLEAR <ls_raw>-request_text.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD normalize_versions.
+    DATA lt_normalized TYPE tt_version_raw.
+    DATA ls_raw        TYPE ty_version_raw.
+
+    LOOP AT ct_raw INTO ls_raw.
+      IF ls_raw-version_no IS INITIAL.
+        ls_raw-is_active = abap_true.
+      ENDIF.
+
+      APPEND ls_raw TO lt_normalized.
+    ENDLOOP.
+
+    SORT lt_normalized BY datum DESCENDING
+                          uzeit DESCENDING
+                          version_no DESCENDING.
+
+    DELETE ADJACENT DUPLICATES FROM lt_normalized COMPARING
+      version_no
+      request
+      datum
+      uzeit
+      author
+      is_active.
+
+    ct_raw = lt_normalized.
+  ENDMETHOD.
+
+  METHOD map_response.
+    DATA lv_category TYPE string.
+
+    lv_category = map_category( iv_category ).
+
+    rt_result = VALUE #(
+      FOR ls_raw IN it_raw
+      (
+        id        = COND string(
+                      WHEN ls_raw-is_active = abap_true
+                      THEN '00000'
+                      ELSE format_id( ls_raw-version_no ) )
+        title     = COND string(
+                      WHEN ls_raw-request_text IS NOT INITIAL
+                      THEN ls_raw-request_text
+                      ELSE '' )
+        updated   = format_datetime(
+                      iv_datum = ls_raw-datum
+                      iv_uzeit = ls_raw-uzeit )
+        request   = COND string(
+                      WHEN ls_raw-request IS NOT INITIAL
+                      THEN CONV string( ls_raw-request )
+                      ELSE '' )
+        file_name = CONV string( iv_file_name )
+        category  = lv_category
+      )
+    ).
+  ENDMETHOD.
+
+  METHOD map_category.
+    DATA lv_category TYPE char20.
+
+    lv_category = iv_category.
+    TRANSLATE lv_category TO UPPER CASE.
+
+    CASE lv_category.
+      WHEN 'PROGRAM' OR 'PROG' OR 'REPORT'.
+        rv_category = 'PROG'.
+
+      WHEN 'CLASS' OR 'CLAS'.
+        rv_category = 'CLAS'.
+
+      WHEN 'ENHANCEMENT' OR 'ENHO'.
+        rv_category = 'ENHO'.
+
+      WHEN 'FUNCTION_MODULE' OR 'FUNC'.
+        rv_category = 'FUNC'.
+
+      WHEN 'FUNCTION_GROUP' OR 'FUGR'.
+        rv_category = 'FUGR'.
+
+      WHEN 'INDEX' OR 'INDX'.
+        rv_category = 'INDX'.
+
+      WHEN 'INTERFACE' OR 'INTF'.
+        rv_category = 'INTF'.
+
+      WHEN 'TABLE' OR 'TABL'.
+        rv_category = 'TABL'.
+
+      WHEN 'CDS_VIEW' OR 'DDLS'.
+        rv_category = 'DDLS'.
+
+      WHEN 'INCLUDE' OR 'INCL'.
+        rv_category = 'INCL'.
+
+      WHEN 'DOMAIN' OR 'DOMA'.
+        rv_category = 'DOMA'.
+
+      WHEN 'DATA_ELEMENT' OR 'DTEL'.
+        rv_category = 'DTEL'.
+
+      WHEN OTHERS.
+        rv_category = lv_category.
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD format_datetime.
+    DATA lv_uzeit TYPE syuzeit.
+
+    lv_uzeit = iv_uzeit.
+    IF lv_uzeit IS INITIAL.
+      lv_uzeit = '000000'.
+    ENDIF.
+
+    rv_datetime = |{ iv_datum+0(4) }-{ iv_datum+4(2) }-{ iv_datum+6(2) }T{ lv_uzeit+0(2) }:{ lv_uzeit+2(2) }:{ lv_uzeit+4(2) }|.
+  ENDMETHOD.
+
+  METHOD format_id.
+    rv_id = |{ iv_version_no WIDTH = 5 PAD = '0' ALIGN = RIGHT }|.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Escrita do arquivo JSON no frontend
+************************************************************************
+CLASS lcl_file_writer DEFINITION FINAL.
+  PUBLIC SECTION.
+    CLASS-METHODS write_json_file
+      IMPORTING
+        it_result TYPE tt_response
+      RAISING
+        lcx_app.
+ENDCLASS.
+
+CLASS lcl_file_writer IMPLEMENTATION.
+  METHOD write_json_file.
+    DATA: lv_json  TYPE string,
+          lt_lines TYPE tt_json_lines.
+
+    lv_json = /ui2/cl_json=>serialize(
+                data        = it_result
+                compress    = abap_false
+                pretty_name = /ui2/cl_json=>pretty_mode-camel_case ).
+
+    APPEND VALUE #( line = lv_json ) TO lt_lines.
+
+    cl_gui_frontend_services=>gui_download(
+      EXPORTING
+        filename = gc_path
+        filetype = 'ASC'
+      CHANGING
+        data_tab = lt_lines
+      EXCEPTIONS
+        file_write_error        = 1
+        no_batch                = 2
+        gui_refuse_filetransfer = 3
+        invalid_type            = 4
+        no_authority            = 5
+        unknown_error           = 6
+        header_not_allowed      = 7
+        separator_not_allowed   = 8
+        filesize_not_allowed    = 9
+        header_too_long         = 10
+        dp_error_create         = 11
+        dp_error_send           = 12
+        dp_error_write          = 13
+        unknown_dp_error        = 14
+        access_denied           = 15
+        dp_out_of_memory        = 16
+        disk_full               = 17
+        dp_timeout              = 18
+        file_not_found          = 19
+        dataprovider_exception  = 20
+        control_flush_error     = 21
+        not_supported_by_gui    = 22
+        error_no_gui            = 23
+        OTHERS                  = 24 ).
+
+    IF sy-subrc <> 0.
+      RAISE EXCEPTION NEW lcx_app(
+        iv_text = |Erro ao gerar arquivo em { gc_path }| ).
+    ENDIF.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Execução
+************************************************************************
+START-OF-SELECTION.
+  TRY.
+      DATA(lt_result) = lcl_version_service=>get_versions_multi( ).
+
+      lcl_file_writer=>write_json_file(
+        it_result = lt_result ).
+
+      MESSAGE |Arquivo JSON gerado com sucesso em { gc_path }| TYPE 'S'.
+
+    CATCH lcx_app INTO DATA(lx_app).
+      MESSAGE lx_app->mv_text TYPE 'E'.
+  ENDTRY.
