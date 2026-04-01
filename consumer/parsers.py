@@ -73,6 +73,59 @@ def parse_versions_metadata_txt(raw_content: str) -> list[dict]:
     return results
 
 
+def parse_abap_files_by_request_txt(raw_content: str) -> list[dict]:
+    """Converte saida do report Z_GET_ABAP_FILES_BY_REQUEST.
+
+    Tenta JSON primeiro (caso o report use /ui2/cl_json=>serialize).
+    Fallback: pipe-delimited  fileName|category|request|taskId|taskType
+    Agrupa por (fileName, category) e consolida requestTasks.
+    """
+    import json as _json
+    from collections import OrderedDict
+
+    text = raw_content.replace("\\n", "\n").strip()
+    if not text:
+        return []
+
+    # Tenta JSON direto
+    try:
+        data = _json.loads(text)
+        if isinstance(data, list):
+            return data
+        return [data]
+    except (ValueError, _json.JSONDecodeError):
+        pass
+
+    # Fallback: pipe-delimited
+    groups: OrderedDict[tuple[str, str], list[dict]] = OrderedDict()
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        parts = [p.strip() for p in stripped.split("|")]
+        if len(parts) < 2:
+            continue
+        file_name = parts[0]
+        category  = parts[1] if len(parts) > 1 else ""
+        task_id   = parts[3] if len(parts) > 3 else ""
+        task_type = parts[4] if len(parts) > 4 else ""
+
+        key = (file_name, category)
+        if key not in groups:
+            groups[key] = []
+        if task_id:
+            groups[key].append({"taskId": task_id, "taskType": task_type})
+
+    results: list[dict] = []
+    for (fn, cat), tasks in groups.items():
+        results.append({
+            "fileName": fn,
+            "category": cat,
+            "requestTasks": tasks,
+        })
+    return results
+
+
 def parse_reports_txt(raw_content: str) -> list[dict]:
     """Converte 'FILENAME ; CATEGORY ; PACKAGE ; FGROUP' ou apenas 'FILENAME' em lista de dicts."""
     text = raw_content.replace("\\n", "\n")

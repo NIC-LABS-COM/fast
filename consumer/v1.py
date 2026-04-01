@@ -9,7 +9,7 @@ from .config import (
     QUEUE_RESPONSES, VBS_BY_ROUTING_KEY, QUERY_ROUTING_KEYS, ROUTING_KEY_PREFIX,
 )
 from .logger import log
-from .parsers import parse_requests_txt, parse_reports_txt, parse_packages_txt, parse_versions_metadata_txt
+from .parsers import parse_requests_txt, parse_reports_txt, parse_packages_txt, parse_versions_metadata_txt, parse_abap_files_by_request_txt
 from .vbs import download_vbs, execute_vbs
 
 
@@ -138,6 +138,12 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
     if routing_key == "query.file.category.v1":
         file_name = payload.get("fileName", "").strip().upper()
         return [file_name]
+
+    if routing_key == "query.request.files.v1":
+        requests = payload.get("requests", [])
+        if isinstance(requests, list):
+            return [",".join(r.strip() for r in requests if r.strip())]
+        return [str(requests).strip()]
 
     return None
 
@@ -297,6 +303,46 @@ def process_query_file_category(channel, payload: dict, vbs_url: str) -> None:
     publish_string_response(channel, reply_to, category, correlation_id)
 
 
+def process_query_request_files(channel, payload: dict, vbs_url: str) -> None:
+    correlation_id = payload.get("correlationId", "")
+    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
+    requests       = payload.get("requests", [])
+
+    if isinstance(requests, list):
+        requests_str = ",".join(r.strip() for r in requests if r.strip())
+    else:
+        requests_str = str(requests).strip()
+
+    log(f"[QUERY] query.request.files.v1 | requests={requests_str} | correlationId={correlation_id}")
+
+    if not requests_str:
+        log("[QUERY] FALHA: requests ausente no payload")
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    vbs_path = download_vbs(vbs_url)
+    if vbs_path is None:
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    ok, details = execute_vbs(vbs_path, [requests_str])
+
+    if not ok:
+        log(f"[QUERY] FALHA: query.request.files.v1: {details}")
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    try:
+        data = parse_abap_files_by_request_txt(details)
+    except Exception as exc:
+        log(f"[QUERY] Erro no parsing do TXT: {exc}")
+        publish_query_response(channel, reply_to, [], correlation_id)
+        return
+
+    log(f"[QUERY] SUCESSO: {len(data)} arquivos encontrados para requests")
+    publish_query_response(channel, reply_to, data, correlation_id)
+
+
 def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
@@ -430,6 +476,8 @@ def callback_v1(ch, method, properties, body):
             process_query_versions_metadata(ch, payload, vbs_url)
         elif command == "query.file.category.v1":
             process_query_file_category(ch, payload, vbs_url)
+        elif command == "query.request.files.v1":
+            process_query_request_files(ch, payload, vbs_url)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:

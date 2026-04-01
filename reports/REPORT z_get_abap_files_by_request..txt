@@ -1,0 +1,359 @@
+REPORT z_get_abap_files_by_request.
+
+************************************************************************
+* Seleção
+************************************************************************
+DATA gv_dummy_req TYPE e070-trkorr.
+
+CONSTANTS gc_path TYPE string VALUE 'C:\temp\request_files.txt'.
+
+SELECT-OPTIONS:
+  p_req FOR gv_dummy_req OBLIGATORY.
+
+************************************************************************
+* Tipos
+************************************************************************
+TYPES: BEGIN OF ty_task,
+         taskid   TYPE string,
+         tasktype TYPE string,
+       END OF ty_task.
+
+TYPES: BEGIN OF ty_result,
+         file_name  TYPE string,
+         category   TYPE string,
+         tasks_json TYPE string,
+       END OF ty_result.
+
+TYPES: BEGIN OF ty_output,
+         line TYPE string,
+       END OF ty_output.
+
+TYPES: BEGIN OF ty_e070_task,
+         trkorr     TYPE e070-trkorr,
+         trfunction TYPE e070-trfunction,
+         strkorr    TYPE e070-strkorr,
+       END OF ty_e070_task.
+
+TYPES: BEGIN OF ty_e071_obj,
+         trkorr   TYPE e071-trkorr,
+         pgmid    TYPE e071-pgmid,
+         object   TYPE e071-object,
+         obj_name TYPE e071-obj_name,
+       END OF ty_e071_obj.
+
+TYPES tt_task      TYPE STANDARD TABLE OF ty_task      WITH DEFAULT KEY.
+TYPES tt_result    TYPE STANDARD TABLE OF ty_result    WITH DEFAULT KEY.
+TYPES tt_output    TYPE STANDARD TABLE OF ty_output    WITH DEFAULT KEY.
+TYPES tt_e070_task TYPE STANDARD TABLE OF ty_e070_task WITH DEFAULT KEY.
+TYPES tt_e071_obj  TYPE STANDARD TABLE OF ty_e071_obj  WITH DEFAULT KEY.
+
+************************************************************************
+* Exceção
+************************************************************************
+CLASS lcx_app DEFINITION INHERITING FROM cx_static_check.
+  PUBLIC SECTION.
+    DATA mv_text TYPE string.
+    METHODS constructor IMPORTING iv_text TYPE string.
+ENDCLASS.
+
+CLASS lcx_app IMPLEMENTATION.
+  METHOD constructor.
+    super->constructor( ).
+    mv_text = iv_text.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Serviço
+************************************************************************
+CLASS lcl_service DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS get_files_by_requests
+      RETURNING VALUE(rt_result) TYPE tt_result
+      RAISING lcx_app.
+
+    CLASS-METHODS build_final_json
+      IMPORTING it_result TYPE tt_result
+      RETURNING VALUE(rv_json) TYPE string.
+
+  PRIVATE SECTION.
+    CLASS-METHODS normalize_category
+      IMPORTING iv_object TYPE e071-object
+      RETURNING VALUE(rv_category) TYPE string.
+ENDCLASS.
+
+CLASS lcl_service IMPLEMENTATION.
+
+  METHOD get_files_by_requests.
+    DATA: lt_tasks      TYPE tt_e070_task,
+          lt_objects    TYPE tt_e071_obj,
+          lt_all_trkorr TYPE STANDARD TABLE OF e070-trkorr WITH DEFAULT KEY,
+          ls_req        LIKE LINE OF p_req,
+          ls_task       TYPE ty_e070_task,
+          ls_object     TYPE ty_e071_obj,
+          ls_result     TYPE ty_result,
+          lv_category   TYPE string,
+          lv_task_json  TYPE string,
+          lo_exc        TYPE REF TO lcx_app.
+
+    CLEAR rt_result.
+
+*--------------------------------------------------------------------*
+* 1) Buscar tasks das requests
+*--------------------------------------------------------------------*
+    LOOP AT p_req INTO ls_req.
+
+      APPEND ls_req-low TO lt_all_trkorr.
+
+      REFRESH lt_tasks.
+      SELECT trkorr trfunction strkorr
+        INTO TABLE lt_tasks
+        FROM e070
+        WHERE strkorr = ls_req-low.
+
+      IF sy-subrc = 0.
+        LOOP AT lt_tasks INTO ls_task.
+          APPEND ls_task-trkorr TO lt_all_trkorr.
+        ENDLOOP.
+      ENDIF.
+
+    ENDLOOP.
+
+    SORT lt_all_trkorr.
+    DELETE ADJACENT DUPLICATES FROM lt_all_trkorr.
+
+    IF lt_all_trkorr IS INITIAL.
+      CREATE OBJECT lo_exc
+        EXPORTING
+          iv_text = 'Nenhuma request/task encontrada'.
+      RAISE EXCEPTION lo_exc.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* 2) Buscar objetos em E071
+*--------------------------------------------------------------------*
+    SELECT trkorr pgmid object obj_name
+      INTO TABLE lt_objects
+      FROM e071
+      FOR ALL ENTRIES IN lt_all_trkorr
+      WHERE trkorr = lt_all_trkorr-table_line.
+
+    IF sy-subrc <> 0 OR lt_objects IS INITIAL.
+      CREATE OBJECT lo_exc
+        EXPORTING
+          iv_text = 'Nenhum objeto encontrado na E071 para as requests informadas'.
+      RAISE EXCEPTION lo_exc.
+    ENDIF.
+
+*--------------------------------------------------------------------*
+* 3) Montar saída agrupada por file/category
+*--------------------------------------------------------------------*
+    LOOP AT lt_objects INTO ls_object.
+
+      IF ls_object-obj_name IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      lv_category = lcl_service=>normalize_category( ls_object-object ).
+
+      CLEAR ls_result.
+      READ TABLE rt_result INTO ls_result
+        WITH KEY file_name = ls_object-obj_name
+                 category  = lv_category.
+
+      IF sy-subrc <> 0.
+        CLEAR ls_result.
+        ls_result-file_name  = ls_object-obj_name.
+        ls_result-category   = lv_category.
+        ls_result-tasks_json = ''.
+      ENDIF.
+
+*--------------------------------------------------------------------*
+* descobrir taskType na E070
+*--------------------------------------------------------------------*
+      CLEAR ls_task.
+      SELECT SINGLE trkorr trfunction strkorr
+        INTO ls_task
+        FROM e070
+        WHERE trkorr = ls_object-trkorr.
+
+      CLEAR lv_task_json.
+      CONCATENATE '{"taskId":"' ls_object-trkorr '","taskType":"' ls_task-trfunction '"}'
+             INTO lv_task_json.
+
+      IF ls_result-tasks_json IS INITIAL.
+        ls_result-tasks_json = lv_task_json.
+      ELSE.
+        IF ls_result-tasks_json CS lv_task_json.
+        ELSE.
+          CONCATENATE ls_result-tasks_json ',' lv_task_json
+                 INTO ls_result-tasks_json.
+        ENDIF.
+      ENDIF.
+
+      DELETE rt_result WHERE file_name = ls_object-obj_name
+                        AND category  = lv_category.
+
+      APPEND ls_result TO rt_result.
+
+    ENDLOOP.
+
+    IF rt_result IS INITIAL.
+      CREATE OBJECT lo_exc
+        EXPORTING
+          iv_text = 'Nenhum resultado montado para as requests informadas'.
+      RAISE EXCEPTION lo_exc.
+    ENDIF.
+
+  ENDMETHOD.
+
+  METHOD normalize_category.
+    CLEAR rv_category.
+
+    CASE iv_object.
+      WHEN 'PROG'.
+        rv_category = 'PROG'.
+      WHEN 'CLAS'.
+        rv_category = 'CLAS'.
+      WHEN 'FUGR'.
+        rv_category = 'FUGR'.
+      WHEN 'FUNC'.
+        rv_category = 'FUNC'.
+      WHEN 'INTF'.
+        rv_category = 'INTF'.
+      WHEN 'TABL'.
+        rv_category = 'TABL'.
+      WHEN 'DTEL'.
+        rv_category = 'DTEL'.
+      WHEN 'DOMA'.
+        rv_category = 'DOMA'.
+      WHEN 'DDLS'.
+        rv_category = 'DDLS'.
+      WHEN 'ENHO'.
+        rv_category = 'ENHO'.
+      WHEN 'INDX'.
+        rv_category = 'INDX'.
+      WHEN 'INCL'.
+        rv_category = 'INCL'.
+      WHEN OTHERS.
+        rv_category = iv_object.
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD build_final_json.
+    DATA: ls_result TYPE ty_result,
+          lv_line   TYPE string,
+          lv_first  TYPE c.
+
+    CLEAR rv_json.
+    rv_json = '['.
+    lv_first = 'X'.
+
+    LOOP AT it_result INTO ls_result.
+
+      CLEAR lv_line.
+
+      IF lv_first = 'X'.
+        lv_first = space.
+      ELSE.
+        CONCATENATE rv_json ',' INTO rv_json.
+      ENDIF.
+
+      CONCATENATE
+        '{"fileName":"' ls_result-file_name
+        '","category":"' ls_result-category
+        '","requestTasks":[' ls_result-tasks_json ']}'
+        INTO lv_line.
+
+      CONCATENATE rv_json lv_line INTO rv_json.
+    ENDLOOP.
+
+    CONCATENATE rv_json ']' INTO rv_json.
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Writer
+************************************************************************
+CLASS lcl_writer DEFINITION.
+  PUBLIC SECTION.
+    CLASS-METHODS write_file
+      IMPORTING iv_json TYPE string
+      RAISING lcx_app.
+ENDCLASS.
+
+CLASS lcl_writer IMPLEMENTATION.
+
+  METHOD write_file.
+    DATA: lt_lines TYPE tt_output,
+          ls_line  TYPE ty_output,
+          lo_exc   TYPE REF TO lcx_app.
+
+    CLEAR lt_lines.
+    CLEAR ls_line.
+
+    ls_line-line = iv_json.
+    APPEND ls_line TO lt_lines.
+
+    CALL METHOD cl_gui_frontend_services=>gui_download
+      EXPORTING
+        filename = gc_path
+        filetype = 'ASC'
+      CHANGING
+        data_tab = lt_lines
+      EXCEPTIONS
+        file_write_error        = 1
+        no_batch                = 2
+        gui_refuse_filetransfer = 3
+        invalid_type            = 4
+        no_authority            = 5
+        unknown_error           = 6
+        header_not_allowed      = 7
+        separator_not_allowed   = 8
+        filesize_not_allowed    = 9
+        header_too_long         = 10
+        dp_error_create         = 11
+        dp_error_send           = 12
+        dp_error_write          = 13
+        unknown_dp_error        = 14
+        access_denied           = 15
+        dp_out_of_memory        = 16
+        disk_full               = 17
+        dp_timeout              = 18
+        file_not_found          = 19
+        dataprovider_exception  = 20
+        control_flush_error     = 21
+        not_supported_by_gui    = 22
+        error_no_gui            = 23
+        OTHERS                  = 24.
+
+    IF sy-subrc <> 0.
+      CREATE OBJECT lo_exc
+        EXPORTING
+          iv_text = 'Erro ao gerar arquivo da request'.
+      RAISE EXCEPTION lo_exc.
+    ENDIF.
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Execução
+************************************************************************
+START-OF-SELECTION.
+  DATA: lt_result TYPE tt_result,
+        lv_json   TYPE string,
+        lo_exc    TYPE REF TO lcx_app.
+
+  TRY.
+      lt_result = lcl_service=>get_files_by_requests( ).
+      lv_json   = lcl_service=>build_final_json( lt_result ).
+
+      lcl_writer=>write_file( lv_json ).
+
+      MESSAGE 'Arquivo JSON gerado com sucesso' TYPE 'S'.
+
+    CATCH lcx_app INTO lo_exc.
+      MESSAGE lo_exc->mv_text TYPE 'E'.
+  ENDTRY.

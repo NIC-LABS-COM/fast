@@ -56,6 +56,7 @@ class QueriesTab(ttk.Frame):
         self._build_packages_tab()
         self._build_versions_tab()
         self._build_category_tab()
+        self._build_request_files_tab()
 
     # ---- Requests ----
     def _build_requests_tab(self) -> None:
@@ -167,6 +168,29 @@ class QueriesTab(ttk.Frame):
         self._category_result = _make_result_panel(tab)
         self._result_panels.append(self._category_result)
 
+    # ---- Files by Request ----
+    def _build_request_files_tab(self) -> None:
+        tab = ttk.Frame(self._notebook, padding=12)
+        self._notebook.add(tab, text="  Files by Request  ")
+
+        top = ttk.Frame(tab)
+        top.pack(fill=tk.X)
+
+        ttk.Label(top, text="Requests (separadas por vírgula):").pack(side=tk.LEFT)
+        self._reqfiles_var = tk.StringVar()
+        ttk.Entry(top, textvariable=self._reqfiles_var, width=50).pack(side=tk.LEFT, padx=(4, 12))
+
+        self._btn_request_files = ttk.Button(
+            top, text="Buscar Arquivos", command=self._query_request_files, width=18,
+        )
+        self._btn_request_files.pack(side=tk.LEFT, padx=(4, 0))
+
+        ttk.Button(top, text="Limpar", width=10,
+                   command=lambda: self._clear_panel(self._reqfiles_result)).pack(side=tk.RIGHT)
+
+        self._reqfiles_result = _make_result_panel(tab)
+        self._result_panels.append(self._reqfiles_result)
+
     # ------------------------------------------------------------------ #
     #  Acoes
     # ------------------------------------------------------------------ #
@@ -264,6 +288,33 @@ class QueriesTab(ttk.Frame):
         self._btn_category.configure(state=tk.DISABLED)
         self._on_publish_v1(v1_data)
         self._btn_category.configure(state=tk.NORMAL)
+
+    def _query_request_files(self) -> None:
+        raw = self._reqfiles_var.get().strip()
+        if not raw:
+            messagebox.showwarning("Atenção", "Informe pelo menos uma request.")
+            return
+
+        requests_list = [r.strip() for r in raw.split(",") if r.strip()]
+        if not requests_list:
+            messagebox.showwarning("Atenção", "Informe pelo menos uma request válida.")
+            return
+
+        correlation_id = str(uuid.uuid4())
+        v1_data = {
+            "payload": {
+                "requests": requests_list,
+                "correlationId": correlation_id,
+                "replyTo": "queue_vpn_respostas",
+            },
+            "routing_key": "usiminas.req.query.request.files.v1",
+            "correlation_id": correlation_id,
+        }
+        self._log_fn(f"Enviando query.request.files.v1 | requests={requests_list}")
+        self._set_status("Buscando arquivos por request no SAP...")
+        self._btn_request_files.configure(state=tk.DISABLED)
+        self._on_publish_v1(v1_data)
+        self._btn_request_files.configure(state=tk.NORMAL)
 
     # ------------------------------------------------------------------ #
     #  Helpers

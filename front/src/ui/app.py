@@ -96,8 +96,14 @@ class SapPublisherApp:
             self._pending.pop(correlation_id, None)
             return
         
+        # Resposta sem formato conhecido — ignora silenciosamente
+        if "action" not in response:
+            logger.warning("Resposta ignorada (formato desconhecido): %s", response)
+            self._pending.pop(correlation_id, None)
+            return
+
         # Formato legado
-        action = response.get("action", "?")
+        action = response["action"]
         obj = response.get("object_name", "?")
         status = response.get("status", "?")
         message = response.get("message", "")
