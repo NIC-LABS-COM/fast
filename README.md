@@ -1,40 +1,56 @@
-*&---------------------------------------------------------------------*
-*& Report Z_BUSCA_REPORTS
-*&---------------------------------------------------------------------*
-REPORT z_busca_reports.
 
-TYPES: BEGIN OF ty_report,
-         obj_name TYPE tadir-obj_name,
-       END OF ty_report.
+*&---------------------------------------------------------------------*
+*& Report Z_GET_ALL_PACKAGES
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT Z_GET_ALL_PACKAGES.
 
-DATA: lt_reports  TYPE STANDARD TABLE OF ty_report,
-      ls_report   TYPE ty_report,
+TYPES: BEGIN OF ty_package,
+         devclass TYPE tdevc-devclass,
+         ctext    TYPE tdevct-ctext,
+       END OF ty_package.
+
+DATA: lt_packages TYPE STANDARD TABLE OF ty_package,
+      ls_package  TYPE ty_package,
       lt_output   TYPE STANDARD TABLE OF string,
       lv_fullpath TYPE string,
       lv_line     TYPE string.
 
 START-OF-SELECTION.
-A
-  SELECT obj_name
-    FROM tadir
-    INTO TABLE @lt_reports
-    WHERE pgmid    = 'R3TR'
-      AND object   = 'PROG'
-      AND ( obj_name LIKE 'Z%' OR obj_name LIKE 'Y%' )
-    ORDER BY obj_name.
 
-  IF sy-subrc <> 0 OR lt_reports IS INITIAL.
-    MESSAGE 'Nenhum report Z ou Y encontrado na TADIR.' TYPE 'S' DISPLAY LIKE 'W'.
+  SELECT
+    package~devclass AS devclass,
+    text~ctext       AS ctext
+    FROM tdevc AS package
+    LEFT OUTER JOIN tdevct AS text
+      ON package~devclass = text~devclass
+     AND text~spras       = @sy-langu
+    WHERE package~devclass LIKE 'Z%'
+       OR package~devclass LIKE 'Y%'
+       OR package~devclass = 'LOCAL'
+       OR package~devclass = '$TMP'
+    ORDER BY package~devclass
+    INTO TABLE @lt_packages.
+
+  IF sy-subrc <> 0 OR lt_packages IS INITIAL.
+    MESSAGE 'Nenhum package encontrado.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_reports INTO ls_report.
+  LOOP AT lt_packages INTO ls_package.
     CLEAR lv_line.
-    lv_line = ls_report-obj_name.
+
+    IF ls_package-ctext IS INITIAL.
+      lv_line = ls_package-devclass.
+    ELSE.
+      lv_line = ls_package-devclass.
+    ENDIF.
+
     APPEND lv_line TO lt_output.
   ENDLOOP.
 
-  lv_fullpath = 'C:\temp\reports.txt'.
+  lv_fullpath = 'C:\temp\packages_tdevc.txt'.
 
   CALL METHOD cl_gui_frontend_services=>gui_download
     EXPORTING
@@ -67,7 +83,7 @@ A
       OTHERS                  = 22.
 
   IF sy-subrc = 0.
-    MESSAGE |{ lines( lt_output ) } reports Z/Y baixados em { lv_fullpath }| TYPE 'S'.
+    MESSAGE |{ lines( lt_output ) } packages baixados em { lv_fullpath }| TYPE 'S'.
   ELSE.
     MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
-  ENDIF.
+  ENDIF.Z
