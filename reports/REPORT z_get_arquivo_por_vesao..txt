@@ -1,0 +1,476 @@
+REPORT z_get_arquivo_por_versao.
+
+************************************************************************
+* Seleção
+************************************************************************
+PARAMETERS: p_fname TYPE string OBLIGATORY,
+            p_cat   TYPE string OBLIGATORY,
+            p_vers  TYPE string.
+
+CONSTANTS gc_path TYPE string VALUE 'C:\temp\arquivo_por_versao.txt'.
+
+************************************************************************
+* Tipos
+************************************************************************
+TYPES: ty_line_source  TYPE c LENGTH 255,
+       ty_t_source_raw TYPE STANDARD TABLE OF ty_line_source WITH EMPTY KEY.
+
+TYPES: BEGIN OF ty_output,
+         line TYPE string,
+       END OF ty_output.
+
+TYPES tt_output TYPE STANDARD TABLE OF ty_output WITH DEFAULT KEY.
+
+************************************************************************
+* Exceção
+************************************************************************
+CLASS lcx_read_version DEFINITION INHERITING FROM cx_static_check.
+  PUBLIC SECTION.
+    DATA mv_text TYPE string READ-ONLY.
+    METHODS constructor IMPORTING iv_text TYPE string.
+ENDCLASS.
+
+CLASS lcx_read_version IMPLEMENTATION.
+  METHOD constructor.
+    super->constructor( ).
+    mv_text = iv_text.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Serviço principal
+************************************************************************
+CLASS lcl_read_from_version DEFINITION FINAL.
+  PUBLIC SECTION.
+    METHODS execute
+      IMPORTING
+        iv_file_name TYPE string
+        iv_category  TYPE string
+        iv_versionid TYPE string
+      RETURNING
+        VALUE(rv_content) TYPE string
+      RAISING
+        lcx_read_version.
+
+  PRIVATE SECTION.
+    METHODS validate_request
+      IMPORTING
+        iv_file_name TYPE string
+        iv_category  TYPE string
+      RAISING
+        lcx_read_version.
+
+    METHODS resolve_source_name
+      IMPORTING
+        iv_file_name TYPE string
+        iv_category  TYPE string
+      RETURNING
+        VALUE(rv_source_name) TYPE progname
+      RAISING
+        lcx_read_version.
+
+    METHODS resolve_program_name
+      IMPORTING
+        iv_program TYPE string
+      RETURNING
+        VALUE(rv_source_name) TYPE progname
+      RAISING
+        lcx_read_version.
+
+    METHODS resolve_function_program
+      IMPORTING
+        iv_funcname TYPE string
+      RETURNING
+        VALUE(rv_source_name) TYPE progname
+      RAISING
+        lcx_read_version.
+
+    METHODS resolve_class_pool
+      IMPORTING
+        iv_classname TYPE string
+      RETURNING
+        VALUE(rv_source_name) TYPE progname
+      RAISING
+        lcx_read_version.
+
+    METHODS resolve_function_group_program
+      IMPORTING
+        iv_fugr TYPE string
+      RETURNING
+        VALUE(rv_source_name) TYPE progname
+      RAISING
+        lcx_read_version.
+
+    METHODS read_active_source
+      IMPORTING
+        iv_source_name TYPE progname
+      RETURNING
+        VALUE(rt_source) TYPE ty_t_source_raw
+      RAISING
+        lcx_read_version.
+
+    METHODS read_version_source
+      IMPORTING
+        iv_source_name TYPE progname
+        iv_version_id  TYPE string
+      RETURNING
+        VALUE(rt_source) TYPE ty_t_source_raw
+      RAISING
+        lcx_read_version.
+
+    METHODS join_source_lines
+      IMPORTING
+        it_source TYPE ty_t_source_raw
+      RETURNING
+        VALUE(rv_content) TYPE string.
+ENDCLASS.
+
+CLASS lcl_read_from_version IMPLEMENTATION.
+
+  METHOD execute.
+    DATA: lv_source_name TYPE progname,
+          lt_source      TYPE ty_t_source_raw.
+
+    validate_request(
+      iv_file_name = iv_file_name
+      iv_category  = iv_category
+    ).
+
+    lv_source_name = resolve_source_name(
+      iv_file_name = iv_file_name
+      iv_category  = iv_category
+    ).
+
+    IF iv_versionid IS INITIAL
+       OR to_upper( iv_versionid ) = 'ACTIVE'.
+      lt_source = read_active_source( lv_source_name ).
+    ELSE.
+      lt_source = read_version_source(
+        iv_source_name = lv_source_name
+        iv_version_id  = iv_versionid
+      ).
+    ENDIF.
+
+    rv_content = join_source_lines( lt_source ).
+  ENDMETHOD.
+
+  METHOD validate_request.
+    DATA lv_category TYPE string.
+
+    lv_category = iv_category.
+    TRANSLATE lv_category TO UPPER CASE.
+
+    IF iv_file_name IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = 'Campo fileName é obrigatório.'.
+    ENDIF.
+
+    IF lv_category IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = 'Campo category é obrigatório.'.
+    ENDIF.
+
+    CASE lv_category.
+      WHEN 'PROGRAM' OR 'PROG' OR 'REPORT'
+        OR 'FUNCTION_MODULE' OR 'FUNC'
+        OR 'CLASS' OR 'CLAS'
+        OR 'INCLUDE' OR 'INCL'
+        OR 'FUNCTION_GROUP' OR 'FUGR'.
+        " ok
+
+      WHEN 'ENHO' OR 'ENHANCEMENT'
+        OR 'INDX' OR 'INDEX'
+        OR 'INTF' OR 'INTERFACE'
+        OR 'TABL' OR 'TABLE'
+        OR 'DDLS' OR 'CDS_VIEW'
+        OR 'DOMA' OR 'DOMAIN'
+        OR 'DTEL' OR 'DATA_ELEMENT'.
+        RAISE EXCEPTION TYPE lcx_read_version
+          EXPORTING
+            iv_text = |Categoria { iv_category } ainda não suportada por este report.|.
+
+      WHEN OTHERS.
+        RAISE EXCEPTION TYPE lcx_read_version
+          EXPORTING
+            iv_text = |Categoria inválida: { iv_category }.|.
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD resolve_source_name.
+    DATA lv_category TYPE string.
+
+    lv_category = iv_category.
+    TRANSLATE lv_category TO UPPER CASE.
+
+    CASE lv_category.
+      WHEN 'PROGRAM' OR 'PROG' OR 'REPORT'
+        OR 'INCLUDE' OR 'INCL'.
+        rv_source_name = resolve_program_name( iv_program = iv_file_name ).
+
+      WHEN 'FUNCTION_MODULE' OR 'FUNC'.
+        rv_source_name = resolve_function_program( iv_funcname = iv_file_name ).
+
+      WHEN 'CLASS' OR 'CLAS'.
+        rv_source_name = resolve_class_pool( iv_classname = iv_file_name ).
+
+      WHEN 'FUNCTION_GROUP' OR 'FUGR'.
+        rv_source_name = resolve_function_group_program( iv_fugr = iv_file_name ).
+
+      WHEN OTHERS.
+        RAISE EXCEPTION TYPE lcx_read_version
+          EXPORTING
+            iv_text = |Categoria não suportada: { iv_category }|.
+    ENDCASE.
+  ENDMETHOD.
+
+  METHOD resolve_program_name.
+    DATA lv_program TYPE progname.
+
+    lv_program = iv_program.
+    TRANSLATE lv_program TO UPPER CASE.
+
+    SELECT SINGLE name
+      INTO rv_source_name
+      FROM trdir
+      WHERE name = lv_program.
+
+    IF sy-subrc <> 0 OR rv_source_name IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = |Programa/include { iv_program } não encontrado na TRDIR.|.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD resolve_function_program.
+    DATA lv_funcname TYPE rs38l_fnam.
+    DATA lv_pname    TYPE progname.
+
+    lv_funcname = iv_funcname.
+    TRANSLATE lv_funcname TO UPPER CASE.
+
+    SELECT SINGLE pname
+      INTO lv_pname
+      FROM tfdir
+      WHERE funcname = lv_funcname.
+
+    IF sy-subrc <> 0 OR lv_pname IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = |Não foi possível localizar o programa da function module { iv_funcname } na TFDIR.|.
+    ENDIF.
+
+    rv_source_name = lv_pname.
+  ENDMETHOD.
+
+  METHOD resolve_class_pool.
+    DATA lv_classname TYPE seoclsname.
+
+    lv_classname = iv_classname.
+    TRANSLATE lv_classname TO UPPER CASE.
+
+    TRY.
+        cl_oo_classname_service=>get_classpool_name(
+          EXPORTING
+            clsname = lv_classname
+          RECEIVING
+            result  = rv_source_name
+        ).
+      CATCH cx_root INTO DATA(lx_class).
+        RAISE EXCEPTION TYPE lcx_read_version
+          EXPORTING
+            iv_text = lx_class->get_text( ).
+    ENDTRY.
+
+    IF rv_source_name IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = |Não foi possível resolver o class pool da classe { iv_classname }.|.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD resolve_function_group_program.
+    DATA lv_fugr      TYPE string.
+    DATA lv_program   TYPE progname.
+    DATA lv_sapl_name TYPE progname.
+
+    lv_fugr = iv_fugr.
+    TRANSLATE lv_fugr TO UPPER CASE.
+
+    " 1) tenta direto
+    lv_program = lv_fugr.
+
+    SELECT SINGLE name
+      INTO rv_source_name
+      FROM trdir
+      WHERE name = lv_program.
+
+    IF sy-subrc = 0 AND rv_source_name IS NOT INITIAL.
+      RETURN.
+    ENDIF.
+
+    " 2) tenta SAPL<grupo>
+    CONCATENATE 'SAPL' lv_fugr INTO lv_sapl_name.
+
+    SELECT SINGLE name
+      INTO rv_source_name
+      FROM trdir
+      WHERE name = lv_sapl_name.
+
+    IF sy-subrc <> 0 OR rv_source_name IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = |Não foi possível localizar o programa principal do function group { iv_fugr }.|.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD read_active_source.
+    READ REPORT iv_source_name INTO rt_source.
+
+    IF sy-subrc <> 0 OR rt_source IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = |Não foi possível ler a versão ativa do objeto { iv_source_name }.|.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD read_version_source.
+    DATA: lt_source_raw  TYPE ty_t_source_raw,
+          lt_trdir_tab   TYPE STANDARD TABLE OF trdir WITH EMPTY KEY,
+          lv_object_name TYPE vrsd-objname,
+          lv_object_type TYPE vrsd-objtype,
+          lv_versno      TYPE vrsd-versno.
+
+    lv_object_name = iv_source_name.
+    lv_object_type = 'REPS'.
+    lv_versno      = iv_version_id.
+
+    CALL FUNCTION 'SVRS_GET_REPS_FROM_OBJECT'
+      EXPORTING
+        object_name                  = lv_object_name
+        object_type                  = lv_object_type
+        versno                       = lv_versno
+        iv_no_release_transformation = abap_true
+      TABLES
+        repos_tab                    = lt_source_raw
+        trdir_tab                    = lt_trdir_tab
+      EXCEPTIONS
+        no_version                   = 1
+        OTHERS                       = 2.
+
+    IF sy-subrc <> 0 OR lt_source_raw IS INITIAL.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = |Não foi possível ler a versão { iv_version_id } do objeto { iv_source_name }.|.
+    ENDIF.
+
+    rt_source = lt_source_raw.
+  ENDMETHOD.
+
+  METHOD join_source_lines.
+    DATA lv_line    TYPE string.
+    DATA lv_content TYPE string.
+
+    CLEAR lv_content.
+
+    LOOP AT it_source INTO DATA(ls_line).
+      lv_line = ls_line.
+
+      IF lv_content IS INITIAL.
+        lv_content = lv_line.
+      ELSE.
+        CONCATENATE lv_content cl_abap_char_utilities=>newline lv_line
+               INTO lv_content.
+      ENDIF.
+    ENDLOOP.
+
+    rv_content = lv_content.
+  ENDMETHOD.
+
+ENDCLASS.
+
+************************************************************************
+* Writer
+************************************************************************
+CLASS lcl_writer DEFINITION FINAL.
+  PUBLIC SECTION.
+    CLASS-METHODS write_file
+      IMPORTING
+        iv_content TYPE string
+      RAISING
+        lcx_read_version.
+ENDCLASS.
+
+CLASS lcl_writer IMPLEMENTATION.
+  METHOD write_file.
+    DATA: lt_lines TYPE tt_output,
+          ls_line  TYPE ty_output.
+
+    CLEAR ls_line.
+    ls_line-line = iv_content.
+    APPEND ls_line TO lt_lines.
+
+    CALL METHOD cl_gui_frontend_services=>gui_download
+      EXPORTING
+        filename = gc_path
+        filetype = 'ASC'
+      CHANGING
+        data_tab = lt_lines
+      EXCEPTIONS
+        file_write_error        = 1
+        no_batch                = 2
+        gui_refuse_filetransfer = 3
+        invalid_type            = 4
+        no_authority            = 5
+        unknown_error           = 6
+        header_not_allowed      = 7
+        separator_not_allowed   = 8
+        filesize_not_allowed    = 9
+        header_too_long         = 10
+        dp_error_create         = 11
+        dp_error_send           = 12
+        dp_error_write          = 13
+        unknown_dp_error        = 14
+        access_denied           = 15
+        dp_out_of_memory        = 16
+        disk_full               = 17
+        dp_timeout              = 18
+        file_not_found          = 19
+        dataprovider_exception  = 20
+        control_flush_error     = 21
+        not_supported_by_gui    = 22
+        error_no_gui            = 23
+        OTHERS                  = 24.
+
+    IF sy-subrc <> 0.
+      RAISE EXCEPTION TYPE lcx_read_version
+        EXPORTING
+          iv_text = 'Erro ao gerar arquivo TXT em C:\temp\arquivo_por_versao.txt.'.
+    ENDIF.
+  ENDMETHOD.
+ENDCLASS.
+
+************************************************************************
+* Execução
+************************************************************************
+START-OF-SELECTION.
+  TRY.
+      DATA lo_reader  TYPE REF TO lcl_read_from_version.
+      DATA lv_content TYPE string.
+
+      CREATE OBJECT lo_reader.
+
+      lv_content = lo_reader->execute(
+        iv_file_name = p_fname
+        iv_category  = p_cat
+        iv_versionid = p_vers
+      ).
+
+      lcl_writer=>write_file( iv_content = lv_content ).
+
+      MESSAGE 'Arquivo TXT gerado com sucesso em C:\temp\arquivo_por_versao.txt' TYPE 'S'.
+
+    CATCH lcx_read_version INTO DATA(lx_error).
+      MESSAGE lx_error->mv_text TYPE 'E'.
+  ENDTRY.

@@ -132,9 +132,6 @@ class RabbitMQService:
                 # Escuta fila legado
                 ch.queue_declare(queue=QUEUE_RESPONSES, durable=True)
                 
-                # Escuta fila V1 (replyTo de query.read.file)
-                ch.queue_declare(queue="q.usiminas.v1", durable=True)
-
                 def callback(ch, method, properties, body):
                     body_str = body.decode("utf-8")
                     try:
@@ -145,11 +142,6 @@ class RabbitMQService:
 
                 ch.basic_consume(
                     queue=QUEUE_RESPONSES,
-                    on_message_callback=callback,
-                    auto_ack=True,
-                )
-                ch.basic_consume(
-                    queue="q.usiminas.v1",
                     on_message_callback=callback,
                     auto_ack=True,
                 )

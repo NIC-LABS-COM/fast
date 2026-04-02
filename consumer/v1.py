@@ -149,6 +149,12 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
         request_id = payload.get("requestId", "").strip().upper()
         return [request_id]
 
+    if routing_key == "query.read.from.version.v1":
+        file_name  = payload.get("fileName", "").strip().upper()
+        category   = payload.get("category", "").strip().upper()
+        version_id = payload.get("versionId", "").strip()
+        return [file_name, category, version_id]
+
     return None
 
 
@@ -379,6 +385,42 @@ def process_query_request_description(channel, payload: dict, vbs_url: str) -> N
     publish_string_response(channel, reply_to, description, correlation_id)
 
 
+def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> None:
+    correlation_id = payload.get("correlationId", "")
+    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
+    file_name      = payload.get("fileName", "").strip().upper()
+    category       = payload.get("category", "").strip().upper()
+    version_id     = payload.get("versionId", "").strip()
+
+    log(f"[QUERY] query.read.from.version.v1 | fileName={file_name} | category={category} | versionId={version_id} | correlationId={correlation_id}")
+
+    if not file_name:
+        log("[QUERY] FALHA: fileName ausente no payload")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    if not version_id:
+        log("[QUERY] FALHA: versionId ausente no payload")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    vbs_path = download_vbs(vbs_url)
+    if vbs_path is None:
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    ok, details = execute_vbs(vbs_path, [file_name, category, version_id])
+
+    if not ok:
+        log(f"[QUERY] FALHA: query.read.from.version.v1: {details}")
+        publish_string_response(channel, reply_to, "", correlation_id)
+        return
+
+    content = details.replace("\\n", "\n")
+    log(f"[QUERY] SUCESSO: query.read.from.version.v1 - {file_name} v{version_id} ({len(content)} chars)")
+    publish_string_response(channel, reply_to, content, correlation_id)
+
+
 def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
@@ -516,6 +558,8 @@ def callback_v1(ch, method, properties, body):
             process_query_request_files(ch, payload, vbs_url)
         elif command == "query.request.description.v1":
             process_query_request_description(ch, payload, vbs_url)
+        elif command == "query.read.from.version.v1":
+            process_query_read_from_version(ch, payload, vbs_url)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:

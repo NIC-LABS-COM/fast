@@ -58,6 +58,7 @@ class QueriesTab(ttk.Frame):
         self._build_category_tab()
         self._build_request_files_tab()
         self._build_request_description_tab()
+        self._build_read_from_version_tab()
 
     # ---- Requests ----
     def _build_requests_tab(self) -> None:
@@ -215,6 +216,40 @@ class QueriesTab(ttk.Frame):
         self._reqdesc_result = _make_result_panel(tab)
         self._result_panels.append(self._reqdesc_result)
 
+    # ---- Read From Version ----
+    def _build_read_from_version_tab(self) -> None:
+        tab = ttk.Frame(self._notebook, padding=12)
+        self._notebook.add(tab, text="  Read From Version  ")
+
+        top = ttk.Frame(tab)
+        top.pack(fill=tk.X)
+
+        ttk.Label(top, text="fileName:").pack(side=tk.LEFT)
+        self._rfv_filename_var = tk.StringVar()
+        ttk.Entry(top, textvariable=self._rfv_filename_var, width=30).pack(side=tk.LEFT, padx=(4, 12))
+
+        ttk.Label(top, text="category:").pack(side=tk.LEFT)
+        self._rfv_category_var = tk.StringVar(value="PROGRAM")
+        ttk.Combobox(
+            top, textvariable=self._rfv_category_var, width=20,
+            values=["PROGRAM", "FUNCTION_MODULE", "CLASS"], state="readonly",
+        ).pack(side=tk.LEFT, padx=(4, 12))
+
+        ttk.Label(top, text="versionId:").pack(side=tk.LEFT)
+        self._rfv_version_var = tk.StringVar()
+        ttk.Entry(top, textvariable=self._rfv_version_var, width=20).pack(side=tk.LEFT, padx=(4, 12))
+
+        self._btn_read_version = ttk.Button(
+            top, text="Buscar Conteúdo", command=self._query_read_from_version, width=18,
+        )
+        self._btn_read_version.pack(side=tk.LEFT, padx=(4, 0))
+
+        ttk.Button(top, text="Limpar", width=10,
+                   command=lambda: self._clear_panel(self._rfv_result)).pack(side=tk.RIGHT)
+
+        self._rfv_result = _make_result_panel(tab)
+        self._result_panels.append(self._rfv_result)
+
     # ------------------------------------------------------------------ #
     #  Acoes
     # ------------------------------------------------------------------ #
@@ -361,6 +396,35 @@ class QueriesTab(ttk.Frame):
         self._btn_request_desc.configure(state=tk.DISABLED)
         self._on_publish_v1(v1_data)
         self._btn_request_desc.configure(state=tk.NORMAL)
+
+    def _query_read_from_version(self) -> None:
+        file_name  = self._rfv_filename_var.get().strip()
+        category   = self._rfv_category_var.get().strip()
+        version_id = self._rfv_version_var.get().strip()
+        if not file_name:
+            messagebox.showwarning("Atenção", "Informe o fileName.")
+            return
+        if not version_id:
+            messagebox.showwarning("Atenção", "Informe o versionId.")
+            return
+
+        correlation_id = str(uuid.uuid4())
+        v1_data = {
+            "payload": {
+                "fileName": file_name,
+                "category": category,
+                "versionId": version_id,
+                "correlationId": correlation_id,
+                "replyTo": "queue_vpn_respostas",
+            },
+            "routing_key": "usiminas.req.query.read.from.version.v1",
+            "correlation_id": correlation_id,
+        }
+        self._log_fn(f"Enviando query.read.from.version.v1 | fileName={file_name} | category={category} | versionId={version_id}")
+        self._set_status("Buscando conteúdo da versão no SAP...")
+        self._btn_read_version.configure(state=tk.DISABLED)
+        self._on_publish_v1(v1_data)
+        self._btn_read_version.configure(state=tk.NORMAL)
 
     # ------------------------------------------------------------------ #
     #  Helpers
