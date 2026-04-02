@@ -35,6 +35,74 @@ Sub CheckSapError(stepName)
     End If
 End Sub
 
+' ---- Sub para verificar popup de erro de ativacao (wnd[1]) ----
+Sub CheckActivationPopup(stepName)
+    Dim popup, popupText, popupTitle
+    On Error Resume Next
+    Set popup = session.findById("wnd[1]")
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo 0
+        Exit Sub
+    End If
+    On Error GoTo 0
+
+    If popup Is Nothing Then Exit Sub
+
+    ' Captura titulo da janela popup
+    On Error Resume Next
+    popupTitle = popup.Text
+    Err.Clear
+
+    ' Tenta capturar texto detalhado do erro
+    popupText = ""
+    Dim txtField
+    Set txtField = popup.findById("usr/txtMESSTXT1")
+    If Not txtField Is Nothing Then
+        popupText = txtField.Text
+    End If
+    Err.Clear
+
+    ' Se nao encontrou MESSTXT1, tenta campo de texto generico
+    If popupText = "" Then
+        Set txtField = popup.findById("usr/txtSPOPLI-TEXTLINE1")
+        If Not txtField Is Nothing Then
+            popupText = txtField.Text
+        End If
+        Err.Clear
+    End If
+
+    ' Se nao encontrou nenhum campo de texto, usa o titulo
+    If popupText = "" Then
+        popupText = popupTitle
+    End If
+    On Error GoTo 0
+
+    ' Verifica se eh um popup de erro (contem palavras chave de erro)
+    Dim lowerText
+    lowerText = LCase(popupText & " " & popupTitle)
+    If InStr(lowerText, "erro") > 0 Or InStr(lowerText, "error") > 0 _
+       Or InStr(lowerText, "falta") > 0 Or InStr(lowerText, "sintaxe") > 0 _
+       Or InStr(lowerText, "syntax") > 0 Or InStr(lowerText, "encerrado") > 0 Then
+        ' Clica em Cancelar para fechar o popup
+        On Error Resume Next
+        popup.findById("tbar[0]/btn[2]").press
+        If Err.Number <> 0 Then
+            Err.Clear
+            popup.Close
+        End If
+        On Error GoTo 0
+        WScript.Sleep 500
+
+        ' Volta para tela inicial
+        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+        session.findById("wnd[0]").sendVKey 0
+
+        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & popupText
+        WScript.Quit 1
+    End If
+End Sub
+
 programName = "ZMM_TESTE_PARIMPAR"
 packageName = "$TMP"
 requestId = ""
@@ -147,3 +215,8 @@ CheckSapError "Salvar programa"
 
 ' Ativar
 session.findById("wnd[0]").sendVKey 27
+WScript.Sleep 1500
+CheckActivationPopup "Ativar programa"
+CheckSapError "Ativar programa"
+
+WScript.Echo "Programa " & programName & " criado com sucesso."
