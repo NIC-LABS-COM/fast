@@ -159,267 +159,187 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
 
 
 # ------------------------------------------------------------------ #
-#  Handlers de query
+#  Helper genérico — download + execução + tratamento de erro
 # ------------------------------------------------------------------ #
-def process_query_requests(channel, payload: dict, vbs_url: str) -> None:
+def _run_query_vbs(channel, payload: dict, vbs_url: str,
+                   args: list[str], routing_key: str):
+    """
+    Executa download + cscript + tratamento padrao de erro.
+
+    Retorna (True, stdout, correlation_id, reply_to)  em caso de sucesso
+    ou      (False, None, correlation_id, reply_to) em caso de falha
+    (nesse caso ja publica a mensagem de erro no reply_to).
+    """
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
 
-    log(f"[QUERY] query.requests.v1 | correlationId={correlation_id}")
+    log(f"[QUERY] {routing_key} | args={args} | correlationId={correlation_id}")
 
     vbs_path = download_vbs(vbs_url)
     if vbs_path is None:
-        publish_query_response(channel, reply_to, [], correlation_id)
-        return
+        error_msg = "ERRO: Falha no download do VBS"
+        log(f"[QUERY] FALHA: {routing_key}: {error_msg}")
+        publish_string_response(channel, reply_to, error_msg, correlation_id)
+        return False, None, correlation_id, reply_to
 
-    ok, details = execute_vbs(vbs_path, [])
+    ok, details = execute_vbs(vbs_path, args)
 
     if not ok:
-        log(f"[QUERY] FALHA: query.requests.v1: {details}")
-        publish_query_response(channel, reply_to, [], correlation_id)
-        return
+        error_msg = f"ERRO: {details}" if details else "ERRO: Falha ao executar VBS"
+        log(f"[QUERY] FALHA: {routing_key}: {details}")
+        publish_string_response(channel, reply_to, error_msg, correlation_id)
+        return False, None, correlation_id, reply_to
 
+    return True, details, correlation_id, reply_to
+
+
+# ------------------------------------------------------------------ #
+#  Handlers de query
+# ------------------------------------------------------------------ #
+def process_query_requests(channel, payload: dict, vbs_url: str) -> None:
+    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_url, [], "query.requests.v1")
+    if not ok:
+        return
     try:
         data = parse_requests_txt(details)
     except Exception as exc:
         log(f"[QUERY] Erro no parsing do TXT: {exc}")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        publish_string_response(channel, reply, f"ERRO: Falha no parsing: {exc}", cid)
         return
-
     log(f"[QUERY] SUCESSO: {len(data)} requests encontradas")
-    publish_query_response(channel, reply_to, data, correlation_id)
+    publish_query_response(channel, reply, data, cid)
 
 
 def process_query_all_files(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-
-    log(f"[QUERY] query.all.files.v1 | correlationId={correlation_id}")
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_query_response(channel, reply_to, [], correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [])
-
+    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_url, [], "query.all.files.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.all.files.v1: {details}")
-        publish_query_response(channel, reply_to, [], correlation_id)
         return
-
     try:
         data = parse_reports_txt(details)
     except Exception as exc:
         log(f"[QUERY] Erro no parsing do TXT: {exc}")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        publish_string_response(channel, reply, f"ERRO: Falha no parsing: {exc}", cid)
         return
-
     log(f"[QUERY] SUCESSO: {len(data)} reports encontrados")
-    publish_query_response(channel, reply_to, data, correlation_id)
+    publish_query_response(channel, reply, data, cid)
 
 
 def process_query_all_packages(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-
-    log(f"[QUERY] query.all.packages.v1 | correlationId={correlation_id}")
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_query_response(channel, reply_to, [], correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [])
-
+    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_url, [], "query.all.packages.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.all.packages.v1: {details}")
-        publish_query_response(channel, reply_to, [], correlation_id)
         return
-
     try:
         data = parse_packages_txt(details)
     except Exception as exc:
         log(f"[QUERY] Erro no parsing do TXT: {exc}")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        publish_string_response(channel, reply, f"ERRO: Falha no parsing: {exc}", cid)
         return
-
     log(f"[QUERY] SUCESSO: {len(data)} pacotes encontrados")
-    publish_query_response(channel, reply_to, data, correlation_id)
+    publish_query_response(channel, reply, data, cid)
 
 
 def process_query_versions_metadata(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-    file_name      = payload.get("fileName", "").strip().upper()
-    category       = payload.get("category", "").strip().upper()
-
-    log(f"[QUERY] query.versions.metadata.v1 | fileName={file_name} | category={category} | correlationId={correlation_id}")
-
+    file_name = payload.get("fileName", "").strip().upper()
+    category  = payload.get("category", "").strip().upper()
     if not file_name:
-        log("[QUERY] FALHA: fileName ausente no payload")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        cid = payload.get("correlationId", "")
+        reply = payload.get("replyTo", QUEUE_RESPONSES)
+        publish_string_response(channel, reply, "ERRO: fileName ausente no payload", cid)
         return
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_query_response(channel, reply_to, [], correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [file_name, category])
-
+    ok, details, cid, reply = _run_query_vbs(
+        channel, payload, vbs_url, [file_name, category], "query.versions.metadata.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.versions.metadata.v1: {details}")
-        publish_query_response(channel, reply_to, [], correlation_id)
         return
-
     try:
         data = parse_versions_metadata_txt(details)
     except Exception as exc:
         log(f"[QUERY] Erro no parsing do TXT: {exc}")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        publish_string_response(channel, reply, f"ERRO: Falha no parsing: {exc}", cid)
         return
-
     log(f"[QUERY] SUCESSO: {len(data)} versoes encontradas")
-    publish_query_response(channel, reply_to, data, correlation_id)
+    publish_query_response(channel, reply, data, cid)
 
 
 def process_query_file_category(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-    file_name      = payload.get("fileName", "").strip().upper()
-
-    log(f"[QUERY] query.file.category.v1 | fileName={file_name} | correlationId={correlation_id}")
-
+    file_name = payload.get("fileName", "").strip().upper()
     if not file_name:
-        log("[QUERY] FALHA: fileName ausente no payload")
-        publish_string_response(channel, reply_to, "", correlation_id)
+        cid = payload.get("correlationId", "")
+        reply = payload.get("replyTo", QUEUE_RESPONSES)
+        publish_string_response(channel, reply, "ERRO: fileName ausente no payload", cid)
         return
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_string_response(channel, reply_to, "", correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [file_name])
-
+    ok, details, cid, reply = _run_query_vbs(
+        channel, payload, vbs_url, [file_name], "query.file.category.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.file.category.v1: {details}")
-        publish_string_response(channel, reply_to, "", correlation_id)
         return
-
     category = details.replace("\\n", "").strip()
     log(f"[QUERY] SUCESSO: query.file.category.v1 - {file_name} = {category}")
-    publish_string_response(channel, reply_to, category, correlation_id)
+    publish_string_response(channel, reply, category, cid)
 
 
 def process_query_request_files(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-    requests       = payload.get("requests", [])
-
+    requests = payload.get("requests", [])
     if isinstance(requests, list):
         requests_str = ",".join(r.strip() for r in requests if r.strip())
     else:
         requests_str = str(requests).strip()
-
-    log(f"[QUERY] query.request.files.v1 | requests={requests_str} | correlationId={correlation_id}")
-
     if not requests_str:
-        log("[QUERY] FALHA: requests ausente no payload")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        cid = payload.get("correlationId", "")
+        reply = payload.get("replyTo", QUEUE_RESPONSES)
+        publish_string_response(channel, reply, "ERRO: requests ausente no payload", cid)
         return
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_query_response(channel, reply_to, [], correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [requests_str])
-
+    ok, details, cid, reply = _run_query_vbs(
+        channel, payload, vbs_url, [requests_str], "query.request.files.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.request.files.v1: {details}")
-        publish_query_response(channel, reply_to, [], correlation_id)
         return
-
     try:
         data = parse_abap_files_by_request_txt(details)
     except Exception as exc:
         log(f"[QUERY] Erro no parsing do TXT: {exc}")
-        publish_query_response(channel, reply_to, [], correlation_id)
+        publish_string_response(channel, reply, f"ERRO: Falha no parsing: {exc}", cid)
         return
-
     log(f"[QUERY] SUCESSO: {len(data)} arquivos encontrados para requests")
-    publish_query_response(channel, reply_to, data, correlation_id)
+    publish_query_response(channel, reply, data, cid)
 
 
 def process_query_request_description(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-    request_id     = payload.get("requestId", "").strip().upper()
-
-    log(f"[QUERY] query.request.description.v1 | requestId={request_id} | correlationId={correlation_id}")
-
+    request_id = payload.get("requestId", "").strip().upper()
     if not request_id:
-        log("[QUERY] FALHA: requestId ausente no payload")
-        publish_string_response(channel, reply_to, "", correlation_id)
+        cid = payload.get("correlationId", "")
+        reply = payload.get("replyTo", QUEUE_RESPONSES)
+        publish_string_response(channel, reply, "ERRO: requestId ausente no payload", cid)
         return
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_string_response(channel, reply_to, "", correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [request_id])
-
+    ok, details, cid, reply = _run_query_vbs(
+        channel, payload, vbs_url, [request_id], "query.request.description.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.request.description.v1: {details}")
-        publish_string_response(channel, reply_to, "", correlation_id)
         return
-
     description = details.replace("\\n", "").strip()
-    # Report envolve em aspas: "descricao" — remove-las
     if description.startswith('"') and description.endswith('"'):
         description = description[1:-1]
     log(f"[QUERY] SUCESSO: query.request.description.v1 - {request_id} = {description}")
-    publish_string_response(channel, reply_to, description, correlation_id)
+    publish_string_response(channel, reply, description, cid)
 
 
 def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> None:
-    correlation_id = payload.get("correlationId", "")
-    reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
-    file_name      = payload.get("fileName", "").strip().upper()
-    category       = payload.get("category", "").strip().upper()
-    version_id     = payload.get("versionId", "").strip()
-
-    log(f"[QUERY] query.read.from.version.v1 | fileName={file_name} | category={category} | versionId={version_id} | correlationId={correlation_id}")
-
+    file_name  = payload.get("fileName", "").strip().upper()
+    category   = payload.get("category", "").strip().upper()
+    version_id = payload.get("versionId", "").strip()
     if not file_name:
-        log("[QUERY] FALHA: fileName ausente no payload")
-        publish_string_response(channel, reply_to, "", correlation_id)
+        cid = payload.get("correlationId", "")
+        reply = payload.get("replyTo", QUEUE_RESPONSES)
+        publish_string_response(channel, reply, "ERRO: fileName ausente no payload", cid)
         return
-
     if not version_id:
-        log("[QUERY] FALHA: versionId ausente no payload")
-        publish_string_response(channel, reply_to, "", correlation_id)
+        cid = payload.get("correlationId", "")
+        reply = payload.get("replyTo", QUEUE_RESPONSES)
+        publish_string_response(channel, reply, "ERRO: versionId ausente no payload", cid)
         return
-
-    vbs_path = download_vbs(vbs_url)
-    if vbs_path is None:
-        publish_string_response(channel, reply_to, "", correlation_id)
-        return
-
-    ok, details = execute_vbs(vbs_path, [file_name, category, version_id])
-
+    ok, details, cid, reply = _run_query_vbs(
+        channel, payload, vbs_url, [file_name, category, version_id], "query.read.from.version.v1")
     if not ok:
-        log(f"[QUERY] FALHA: query.read.from.version.v1: {details}")
-        error_msg = f"ERRO: {details}" if details else "ERRO: Falha ao executar VBS"
-        publish_string_response(channel, reply_to, error_msg, correlation_id)
         return
-
     content = details.replace("\\n", "\n")
     log(f"[QUERY] SUCESSO: query.read.from.version.v1 - {file_name} v{version_id} ({len(content)} chars)")
-    publish_string_response(channel, reply_to, content, correlation_id)
+    publish_string_response(channel, reply, content, cid)
 
 
 def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:

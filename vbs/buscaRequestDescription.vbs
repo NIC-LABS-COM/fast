@@ -143,11 +143,13 @@ If Trim(conteudo) = "" Then
     WScript.Quit 1
 End If
 
-' Volta para tela inicial SAP
+' ---- Cleanup e output ----
 session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
 session.findById("wnd[0]").sendVKey 0
 
-conteudo = Trim(conteudo)
+conteudo = Replace(conteudo, vbCrLf, "\n")
+conteudo = Replace(conteudo, vbCr, "\n")
+conteudo = Replace(conteudo, vbLf, "\n")
 
 WScript.Echo conteudo
 WScript.Quit 0
