@@ -71,16 +71,10 @@ field.Text = argRequestId
 field.caretPosition = Len(argRequestId)
 
 WScript.Sleep 500
-session.findById("wnd[0]").sendVKey 0
-WScript.Sleep 500
 
-' ---- Valida se o campo foi preenchido ----
-If Trim(field.Text) = "" Then
-    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
-    session.findById("wnd[0]").sendVKey 0
-    WScript.StdErr.Write "Campo P_REQ nao foi preenchido no SAP"
-    WScript.Quit 1
-End If
+' Confirma valor (ENTER)
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 1000
 
 ' ---- Executa (F8) ----
 session.findById("wnd[0]").sendVKey 8
