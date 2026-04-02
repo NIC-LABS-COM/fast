@@ -63,10 +63,24 @@ session.findById("wnd[0]").sendVKey 8
 WScript.Sleep 1000
 
 ' ---- Preenche parametro requestId ----
-On Error Resume Next
-session.findById("wnd[0]/usr/txtP_REQ").Text = argRequestId
-Err.Clear
-On Error GoTo 0
+Dim field
+Set field = session.findById("wnd[0]/usr/ctxtP_REQ")
+
+field.SetFocus
+field.Text = argRequestId
+field.caretPosition = Len(argRequestId)
+
+WScript.Sleep 500
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
+
+' ---- Valida se o campo foi preenchido ----
+If Trim(field.Text) = "" Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
+    WScript.StdErr.Write "Campo P_REQ nao foi preenchido no SAP"
+    WScript.Quit 1
+End If
 
 ' ---- Executa (F8) ----
 session.findById("wnd[0]").sendVKey 8
