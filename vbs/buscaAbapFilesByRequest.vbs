@@ -19,6 +19,21 @@ Dim argRequests, arrRequests
 Const REPORT_NAME = "Z_GET_ABAP_FILES_BY_REQUEST"
 Const FILE_PATH   = "C:\temp\request_files.txt"
 
+' ---- Sub para verificar erro na status bar do SAP ----
+Sub CheckSapError(stepName)
+    Dim sbarType, sbarText
+    On Error Resume Next
+    sbarType = session.findById("wnd[0]/sbar").MessageType
+    sbarText = session.findById("wnd[0]/sbar").Text
+    On Error GoTo 0
+    If sbarType = "E" Or sbarType = "A" Then
+        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+        session.findById("wnd[0]").sendVKey 0
+        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & sbarText
+        WScript.Quit 1
+    End If
+End Sub
+
 ' ---- Leitura dos argumentos ----
 argRequests = ""
 
@@ -62,6 +77,7 @@ WScript.Sleep 1000
 session.findById("wnd[0]/usr/ctxtRS38M-PROGRAMM").Text = REPORT_NAME
 session.findById("wnd[0]").sendVKey 8
 WScript.Sleep 1000
+CheckSapError "Abrir report"
 
 ' ---- Preenche requests via SELECT-OPTIONS (multipla selecao) ----
 arrRequests = Split(argRequests, ",")
@@ -94,6 +110,7 @@ End If
 ' ---- Executa (F8) ----
 session.findById("wnd[0]").sendVKey 8
 WScript.Sleep 3000
+CheckSapError "Executar report"
 
 ' Se aparecer popup, tenta fechar
 On Error Resume Next

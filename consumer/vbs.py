@@ -48,7 +48,11 @@ def execute_vbs(vbs_path: str, args: list[str]) -> tuple[bool, str]:
     log(f"Retorno: code={result.returncode}, stdout='{out}', stderr='{err}'")
 
     if result.returncode != 0:
-        return False, err or out or f"Codigo de saida: {result.returncode}"
+        error_msg = err or out or f"Codigo de saida: {result.returncode}"
+        # Extrai mensagem limpa de erro SAP
+        if error_msg.startswith("SAP_ERROR:"):
+            error_msg = error_msg[len("SAP_ERROR:"):].strip()
+        return False, error_msg
 
     if out:
         if err:

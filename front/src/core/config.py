@@ -2,10 +2,22 @@
 Configuracoes e constantes da aplicacao.
 """
 import os
+from pathlib import Path
+
+# Carrega .env da raiz do projeto
+_env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+if _env_path.exists():
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _val = _line.split("=", 1)
+                _val = _val.strip().strip('"').strip("'")
+                os.environ.setdefault(_key.strip(), _val)
 
 # OpenAI
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-OPENAI_MODEL = "gpt-4o"
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o")
 
 # Diretorios
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -14,7 +26,7 @@ LOG_DIR = os.path.join(BASE_DIR, "Log")
 # RabbitMQ
 RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "jackal.rmq.cloudamqp.com")
 RABBITMQ_USER = os.environ.get("RABBITMQ_USER", "rhrstugr")
-RABBITMQ_PASS = os.environ.get("RABBITMQ_PASS", "HC2wvtBtou_DUk9AA276209T4718K9cF")
+RABBITMQ_PASS = os.environ.get("RABBITMQ_PASS", "")
 RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST", "rhrstugr")
 QUEUE_COMMANDS = "queue_vpn_usiminas"
 QUEUE_RESPONSES = "queue_vpn_respostas"
@@ -60,6 +72,9 @@ DEFAULT_REQUEST = ""
 DEFAULT_PACKAGE = ""
 DEFAULT_DOMAIN_DATATYPE = "CHAR"
 DEFAULT_DOMAIN_LENGTH = "15"
+
+# Tipos SAP que exigem tamanho obrigatorio
+TYPES_REQUIRING_LENGTH = {"CHAR", "NUMC", "RAW", "DEC", "QUAN", "CURR", "LRAW"}
 
 # Opcoes de combobox
 TABART_OPTIONS: dict[str, str] = {

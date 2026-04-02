@@ -76,8 +76,8 @@ class DominioTab(ttk.Frame):
             return messagebox.showwarning("Validacao", "Informe o texto.")
         if not dtype:
             return messagebox.showwarning("Validacao", "Informe o datatype.")
-        if not length.isdigit():
-            return messagebox.showwarning("Validacao", "Tamanho deve ser numerico.")
+        if not length.isdigit() or int(length) < 1:
+            return messagebox.showwarning("Validacao", "Tamanho deve ser numerico e maior que zero.")
         if not package:
             return messagebox.showwarning("Validacao", "Informe o pacote.")
         if not request:

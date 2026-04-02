@@ -92,6 +92,7 @@ session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04
 session.findById("wnd[0]/usr/tabsTS/tabpTYPE/ssubSUB_DATA:SAPLSD51:1002/ctxtDD04D-DOMNAME").caretPosition = Len(domainName)
 session.findById("wnd[0]").sendVKey 0
 WScript.Sleep 800
+CheckSapError "Validar dominio " & domainName
 
 session.findById("wnd[0]/usr/tabsTS/tabpADDA").select
 WScript.Sleep 300
@@ -121,3 +122,23 @@ If UCase(Trim(packageName)) <> "$TMP" Then
    session.findById("wnd[1]/tbar[0]/btn[0]").press
    WScript.Sleep 1000
 End If
+
+WScript.Sleep 1000
+CheckSapError "Ativar elemento " & elementName
+
+WScript.Echo "Elemento " & elementName & " criado com sucesso."
+
+' ---- Sub para verificar erro na status bar do SAP ----
+Sub CheckSapError(stepName)
+    Dim sbarType, sbarText
+    On Error Resume Next
+    sbarType = session.findById("wnd[0]/sbar").MessageType
+    sbarText = session.findById("wnd[0]/sbar").Text
+    On Error GoTo 0
+    If sbarType = "E" Or sbarType = "A" Then
+        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+        session.findById("wnd[0]").sendVKey 0
+        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & sbarText
+        WScript.Quit 1
+    End If
+End Sub

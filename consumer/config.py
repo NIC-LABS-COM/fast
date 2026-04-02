@@ -2,14 +2,26 @@
 
 import os
 from datetime import datetime
+from pathlib import Path
+
+# Carrega .env da raiz do projeto
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+if _env_path.exists():
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _val = _line.split("=", 1)
+                _val = _val.strip().strip('"').strip("'")
+                os.environ.setdefault(_key.strip(), _val)
 
 # ------------------------------------------------------------------ #
 #  Configuracao RabbitMQ
 # ------------------------------------------------------------------ #
-RABBITMQ_HOST  = "jackal.rmq.cloudamqp.com"
-RABBITMQ_USER  = "rhrstugr"
-RABBITMQ_PASS  = "HC2wvtBtou_DUk9AA276209T4718K9cF"
-RABBITMQ_VHOST = "rhrstugr"
+RABBITMQ_HOST  = os.environ.get("RABBITMQ_HOST", "jackal.rmq.cloudamqp.com")
+RABBITMQ_USER  = os.environ.get("RABBITMQ_USER", "rhrstugr")
+RABBITMQ_PASS  = os.environ.get("RABBITMQ_PASS", "HC2wvtBtou_DUk9AA276209T4718K9cF")
+RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST", "rhrstugr")
 
 # Filas — legado
 QUEUE_COMMANDS  = "queue_vpn_usiminas"

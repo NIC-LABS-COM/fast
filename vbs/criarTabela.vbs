@@ -263,24 +263,50 @@ Next
 ' ============================================================
 
 session.findById("wnd[0]/tbar[1]/btn[27]").press
+WScript.Sleep 1000
 session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").text = packageName
 session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
 session.findById("wnd[1]/tbar[0]/btn[7]").press
+WScript.Sleep 1000
 
 If UCase(Trim(packageName)) <> "$TMP" Then
    session.findById("wnd[1]/usr/ctxtKO008-TRKORR").text = requestId
    session.findById("wnd[1]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
    session.findById("wnd[1]/tbar[0]/btn[0]").press
+   WScript.Sleep 1000
 End If
 
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").text = "APPL0"
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").caretPosition = 5
-session.findById("wnd[0]").sendVKey 0
+CheckSapError "Ativar tabela " & tableName
 
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").text = "3"
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").setFocus
-session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").caretPosition = 1
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").text = tabArt
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABART").caretPosition = Len(tabArt)
 session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
+
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").text = tabKat
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").setFocus
+session.findById("wnd[0]/usr/tabsTABS/tabpGNRL/ssubTABS_SUBSC:SAPMSEDS1:0050/ctxtDD09V-TABKAT").caretPosition = Len(tabKat)
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
 
 session.findById("wnd[0]/tbar[0]/btn[11]").press
+WScript.Sleep 1000
+CheckSapError "Salvar configuracoes tecnicas"
 session.findById("wnd[0]/tbar[0]/btn[3]").press
+
+WScript.Echo "Tabela " & tableName & " criada com sucesso."
+
+' ---- Sub para verificar erro na status bar do SAP ----
+Sub CheckSapError(stepName)
+    Dim sbarType, sbarText
+    On Error Resume Next
+    sbarType = session.findById("wnd[0]/sbar").MessageType
+    sbarText = session.findById("wnd[0]/sbar").Text
+    On Error GoTo 0
+    If sbarType = "E" Or sbarType = "A" Then
+        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+        session.findById("wnd[0]").sendVKey 0
+        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & sbarText
+        WScript.Quit 1
+    End If
+End Sub

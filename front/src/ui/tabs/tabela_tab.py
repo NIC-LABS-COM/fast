@@ -7,7 +7,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable, Dict, List
 
-from core.config import DEFAULT_PACKAGE, DEFAULT_REQUEST, TABART_OPTIONS, TABKAT_OPTIONS
+from core.config import DEFAULT_PACKAGE, DEFAULT_REQUEST, TABART_OPTIONS, TABKAT_OPTIONS, TYPES_REQUIRING_LENGTH
 from services.ai_service import AIService
 from services.publisher_service import PublisherService
 
@@ -212,6 +212,13 @@ class TabelaTab(ttk.Frame):
         v = self._row_values()
         if not v[0] or not v[3]:
             return messagebox.showwarning("Validacao", "Informe FIELD e ELEMENT.")
+        domtype = str(v[6]).strip().upper()
+        domlen = str(v[7]).strip()
+        if domtype in TYPES_REQUIRING_LENGTH and (not domlen.isdigit() or int(domlen) < 1):
+            return messagebox.showwarning(
+                "Validacao",
+                f"Tipo {domtype} exige tamanho numerico maior que zero.",
+            )
         self.tab_grid.insert("", tk.END, values=v)
 
     def _update_row(self) -> None:

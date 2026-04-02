@@ -3,6 +3,21 @@ Option Explicit
 Dim SapGuiAuto, application, connection, session
 Dim programName, codigo
 
+' ---- Sub para verificar erro na status bar do SAP ----
+Sub CheckSapError(stepName)
+    Dim sbarType, sbarText
+    On Error Resume Next
+    sbarType = session.findById("wnd[0]/sbar").MessageType
+    sbarText = session.findById("wnd[0]/sbar").Text
+    On Error GoTo 0
+    If sbarType = "E" Or sbarType = "A" Then
+        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+        session.findById("wnd[0]").sendVKey 0
+        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & sbarText
+        WScript.Quit 1
+    End If
+End Sub
+
 Sub Pause(seconds)
     Dim t
     t = Timer
@@ -75,9 +90,11 @@ Pause 0.5
 
 session.findById("wnd[0]/tbar[0]/btn[11]").press
 Pause 0.5
+CheckSapError "Salvar programa"
 
 session.findById("wnd[0]").sendVKey 27
 Pause 1.5
+CheckSapError "Ativar programa"
 
 session.findById("wnd[0]").sendVKey 3
 session.findById("wnd[0]").sendVKey 3

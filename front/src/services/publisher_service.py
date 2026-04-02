@@ -4,7 +4,7 @@ Monta cadeias de mensagens (dominio -> elemento -> tabela).
 """
 from typing import Dict, List, Set
 
-from core.config import DEFAULT_DOMAIN_DATATYPE, DEFAULT_DOMAIN_LENGTH, VBS_URLS, PROG_FLOW_OPTIONS, QUEUE_RESPONSES
+from core.config import DEFAULT_DOMAIN_DATATYPE, DEFAULT_DOMAIN_LENGTH, TYPES_REQUIRING_LENGTH, VBS_URLS, PROG_FLOW_OPTIONS, QUEUE_RESPONSES
 from models.messages import SapCommand, SapEventV1
 
 
@@ -182,6 +182,9 @@ class PublisherService:
             dom = item.get("domain_data", "").strip().upper() or el
             domtype = item.get("domtype", "").strip().upper() or DEFAULT_DOMAIN_DATATYPE
             domlen = item.get("domlen", "").strip() or DEFAULT_DOMAIN_LENGTH
+            # Garante tamanho valido para tipos que exigem
+            if domtype in TYPES_REQUIRING_LENGTH and (not domlen.isdigit() or int(domlen) < 1):
+                domlen = DEFAULT_DOMAIN_LENGTH
             desc = item.get("desc", "").strip()
             field = item.get("field", "").strip().upper()
             dom_text = (
