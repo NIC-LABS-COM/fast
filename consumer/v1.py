@@ -413,7 +413,8 @@ def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> Non
 
     if not ok:
         log(f"[QUERY] FALHA: query.read.from.version.v1: {details}")
-        publish_string_response(channel, reply_to, "", correlation_id)
+        error_msg = f"ERRO: {details}" if details else "ERRO: Falha ao executar VBS"
+        publish_string_response(channel, reply_to, error_msg, correlation_id)
         return
 
     content = details.replace("\\n", "\n")
