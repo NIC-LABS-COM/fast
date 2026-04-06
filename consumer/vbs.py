@@ -35,16 +35,14 @@ def execute_vbs(vbs_path: str, args: list[str]) -> tuple[bool, str]:
     cmd = ["cscript.exe", "//nologo", vbs_path, *args]
     log(f"Executando: {cmd}")
     try:
-        result = subprocess.run(
-            cmd, capture_output=True, text=True, encoding="oem", errors="replace"
-        )
+        result = subprocess.run(cmd, capture_output=True)
     except FileNotFoundError:
         return False, "cscript.exe nao encontrado"
     except Exception as exc:
         return False, str(exc)
 
-    out = (result.stdout or "").strip()
-    err = (result.stderr or "").strip()
+    out = result.stdout.decode("oem", errors="replace").strip() if result.stdout else ""
+    err = result.stderr.decode("cp1252", errors="replace").strip() if result.stderr else ""
     log(f"Retorno: code={result.returncode}, stdout='{out}', stderr='{err}'")
 
     if result.returncode != 0:
