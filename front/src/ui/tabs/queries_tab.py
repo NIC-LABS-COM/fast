@@ -59,6 +59,7 @@ class QueriesTab(ttk.Frame):
         self._build_request_files_tab()
         self._build_request_description_tab()
         self._build_read_from_version_tab()
+        self._build_search_tab()
 
     # ---- Requests ----
     def _build_requests_tab(self) -> None:
@@ -250,6 +251,33 @@ class QueriesTab(ttk.Frame):
         self._rfv_result = _make_result_panel(tab)
         self._result_panels.append(self._rfv_result)
 
+    # ---- Object Search ----
+    def _build_search_tab(self) -> None:
+        tab = ttk.Frame(self._notebook, padding=12)
+        self._notebook.add(tab, text="  Object Search  ")
+
+        top = ttk.Frame(tab)
+        top.pack(fill=tk.X)
+
+        ttk.Label(top, text="File Filter:").pack(side=tk.LEFT)
+        self._search_file_var = tk.StringVar(value="*")
+        ttk.Entry(top, textvariable=self._search_file_var, width=30).pack(side=tk.LEFT, padx=(4, 12))
+
+        ttk.Label(top, text="Package Filter:").pack(side=tk.LEFT)
+        self._search_package_var = tk.StringVar(value="$TMP")
+        ttk.Entry(top, textvariable=self._search_package_var, width=30).pack(side=tk.LEFT, padx=(4, 12))
+
+        self._btn_search = ttk.Button(
+            top, text="Buscar", command=self._query_search, width=18,
+        )
+        self._btn_search.pack(side=tk.LEFT, padx=(4, 0))
+
+        ttk.Button(top, text="Limpar", width=10,
+                   command=lambda: self._clear_panel(self._search_result)).pack(side=tk.RIGHT)
+
+        self._search_result = _make_result_panel(tab)
+        self._result_panels.append(self._search_result)
+
     # ------------------------------------------------------------------ #
     #  Acoes
     # ------------------------------------------------------------------ #
@@ -425,6 +453,27 @@ class QueriesTab(ttk.Frame):
         self._btn_read_version.configure(state=tk.DISABLED)
         self._on_publish_v1(v1_data)
         self._btn_read_version.configure(state=tk.NORMAL)
+
+    def _query_search(self) -> None:
+        file_filter    = self._search_file_var.get().strip() or "*"
+        package_filter = self._search_package_var.get().strip() or "$TMP"
+
+        correlation_id = str(uuid.uuid4())
+        v1_data = {
+            "payload": {
+                "fileFilter": file_filter,
+                "packageFilter": package_filter,
+                "correlationId": correlation_id,
+                "replyTo": "queue_vpn_respostas",
+            },
+            "routing_key": "usiminas.req.query.search.v1",
+            "correlation_id": correlation_id,
+        }
+        self._log_fn(f"Enviando query.search.v1 | fileFilter={file_filter} | packageFilter={package_filter}")
+        self._set_status("Buscando objetos ABAP no SAP...")
+        self._btn_search.configure(state=tk.DISABLED)
+        self._on_publish_v1(v1_data)
+        self._btn_search.configure(state=tk.NORMAL)
 
     # ------------------------------------------------------------------ #
     #  Helpers

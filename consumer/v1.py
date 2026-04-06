@@ -155,6 +155,11 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
         version_id = payload.get("versionId", "").strip()
         return [file_name, category, version_id]
 
+    if routing_key == "query.search.v1":
+        file_filter    = payload.get("fileFilter", "*").strip()
+        package_filter = payload.get("packageFilter", "$TMP").strip()
+        return [file_filter, package_filter]
+
     return None
 
 
@@ -342,6 +347,23 @@ def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> Non
     publish_string_response(channel, reply, content, cid)
 
 
+def process_query_search(channel, payload: dict, vbs_url: str) -> None:
+    file_filter    = payload.get("fileFilter", "*").strip()
+    package_filter = payload.get("packageFilter", "$TMP").strip()
+    ok, details, cid, reply = _run_query_vbs(
+        channel, payload, vbs_url, [file_filter, package_filter], "query.search.v1")
+    if not ok:
+        return
+    try:
+        data = json.loads(details.replace("\\n", "\n"))
+    except Exception as exc:
+        log(f"[QUERY] Erro no parsing do JSON: {exc}")
+        publish_string_response(channel, reply, f"ERRO: Falha no parsing: {exc}", cid)
+        return
+    log(f"[QUERY] SUCESSO: {len(data)} objetos encontrados")
+    publish_query_response(channel, reply, data, cid)
+
+
 def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
@@ -481,6 +503,8 @@ def callback_v1(ch, method, properties, body):
             process_query_request_description(ch, payload, vbs_url)
         elif command == "query.read.from.version.v1":
             process_query_read_from_version(ch, payload, vbs_url)
+        elif command == "query.search.v1":
+            process_query_search(ch, payload, vbs_url)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:

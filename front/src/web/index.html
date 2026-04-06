@@ -402,6 +402,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--on-surface)
     <button class="query-tab" onclick="showQueryTab('q-reqfiles',this)">Files by Request</button>
     <button class="query-tab" onclick="showQueryTab('q-reqdesc',this)">Request Desc</button>
     <button class="query-tab" onclick="showQueryTab('q-readver',this)">Read Version</button>
+    <button class="query-tab" onclick="showQueryTab('q-search',this)">Object Search</button>
   </div>
 
   <!-- Requests -->
@@ -520,6 +521,22 @@ body { font-family: var(--font); background: var(--bg); color: var(--on-surface)
       </div>
     </div>
     <div id="qr-readver" class="query-result"></div>
+  </div>
+
+  <!-- Object Search -->
+  <div id="q-search" class="query-panel">
+    <div class="card">
+      <div class="card-title">Buscar Objetos ABAP</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label>File Filter</label><input id="qs-filefilter" value="*" placeholder="*"/></div>
+        <div class="form-group"><label>Package Filter</label><input id="qs-packagefilter" value="$TMP" placeholder="$TMP"/></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px">
+          <button class="btn btn-primary" onclick="querySearch()">Buscar</button>
+          <button class="btn btn-outline" onclick="clearQueryResult('qr-search')">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-search" class="query-result"></div>
   </div>
 </section>
 
@@ -865,12 +882,17 @@ async function queryReadVersion() {
   setStatus('Buscando conteúdo...'); log('query.read.from.version.v1 | '+fn+' v'+v);
   await pywebview.api.query_read_from_version(fn, val('qrv-category'), v);
 }
+async function querySearch() {
+  const ff=val('qs-filefilter')||'*', pf=val('qs-packagefilter')||'$TMP';
+  setStatus('Buscando objetos...'); log('query.search.v1 | fileFilter='+ff+' packageFilter='+pf);
+  await pywebview.api.query_search(ff, pf);
+}
 
 // ── Response Handler (called from Python) ──
 const queryResultMap = {
   'q-requests': 'qr-requests', 'q-reports': 'qr-reports', 'q-packages': 'qr-packages',
   'q-versions': 'qr-versions', 'q-category': 'qr-category', 'q-reqfiles': 'qr-reqfiles',
-  'q-reqdesc': 'qr-reqdesc', 'q-readver': 'qr-readver',
+  'q-reqdesc': 'qr-reqdesc', 'q-readver': 'qr-readver', 'q-search': 'qr-search',
 };
 
 window.handleResponse = function(response) {

@@ -182,3 +182,8 @@ class Api:
         return self._publish_query("usiminas.req.query.read.from.version.v1", {
             "fileName": file_name, "category": category, "versionId": version_id,
         })
+
+    def query_search(self, file_filter, package_filter):
+        return self._publish_query("usiminas.req.query.search.v1", {
+            "fileFilter": file_filter, "packageFilter": package_filter,
+        })
