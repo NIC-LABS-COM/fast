@@ -1,0 +1,245 @@
+*&---------------------------------------------------------------------*
+*& Report Z_REPO_OBJECT_SEARCH
+*&---------------------------------------------------------------------*
+REPORT z_repo_object_search.
+
+*----------------------------------------------------------------------*
+* Tipos
+*----------------------------------------------------------------------*
+TYPES:
+  BEGIN OF ty_object_result,
+    file_name      TYPE string,
+    category       TYPE string,
+    package_name   TYPE string,
+    function_group TYPE string,
+  END OF ty_object_result,
+  tt_object_result TYPE STANDARD TABLE OF ty_object_result WITH EMPTY KEY.
+
+TYPES:
+  BEGIN OF ty_tadir_basic,
+    obj_name TYPE tadir-obj_name,
+    devclass TYPE tadir-devclass,
+  END OF ty_tadir_basic,
+  tt_tadir_basic TYPE STANDARD TABLE OF ty_tadir_basic WITH EMPTY KEY.
+
+TYPES:
+  BEGIN OF ty_tfdir_basic,
+    funcname TYPE tfdir-funcname,
+  END OF ty_tfdir_basic,
+  tt_tfdir_basic TYPE STANDARD TABLE OF ty_tfdir_basic WITH EMPTY KEY.
+
+*----------------------------------------------------------------------*
+* Variáveis Globais
+*----------------------------------------------------------------------*
+DATA: gt_results TYPE tt_object_result.
+
+CONSTANTS gc_path TYPE string VALUE 'C:\tmp\repo_objects.txt'.
+
+*----------------------------------------------------------------------*
+* Tela de Seleção
+*----------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-001.
+  PARAMETERS: p_file TYPE string LOWER CASE OBLIGATORY,
+              p_pack TYPE devclass OBLIGATORY.
+SELECTION-SCREEN END OF BLOCK b01.
+
+*----------------------------------------------------------------------*
+* Processamento Principal
+*----------------------------------------------------------------------*
+START-OF-SELECTION.
+  PERFORM search_repository_objects.
+  PERFORM export_to_txt.
+
+*&---------------------------------------------------------------------*
+*& Form SEARCH_REPOSITORY_OBJECTS
+*&---------------------------------------------------------------------*
+FORM search_repository_objects.
+
+  DATA: lv_file_pattern TYPE string,
+        lv_pname        TYPE tfdir-pname,
+        lv_pack         TYPE devclass,
+        ls_result       TYPE ty_object_result.
+
+  DATA: lt_programs  TYPE tt_tadir_basic,
+        lt_fugr      TYPE tt_tadir_basic,
+        lt_classes   TYPE tt_tadir_basic,
+        lt_funcnames TYPE tt_tfdir_basic.
+
+  CLEAR gt_results.
+
+  lv_file_pattern = p_file.
+  TRANSLATE lv_file_pattern TO UPPER CASE.
+
+  lv_pack = p_pack.
+  TRANSLATE lv_pack TO UPPER CASE.
+
+  IF lv_pack = 'LOCAL'.
+    lv_pack = '$TMP'.
+  ENDIF.
+
+  "----------------------------------------------------------------------
+  " 1) PROGRAMAS (PROG) - TADIR
+  "----------------------------------------------------------------------
+  SELECT obj_name, devclass
+    FROM tadir
+    WHERE pgmid    = 'R3TR'
+      AND object   = 'PROG'
+      AND devclass = @lv_pack
+    INTO TABLE @lt_programs.
+
+  LOOP AT lt_programs ASSIGNING FIELD-SYMBOL(<prog>).
+    IF <prog>-obj_name CP lv_file_pattern.
+      CLEAR ls_result.
+      ls_result-file_name      = <prog>-obj_name.
+      ls_result-category       = 'PROG'.
+      ls_result-package_name   = <prog>-devclass.
+      ls_result-function_group = ''.
+      APPEND ls_result TO gt_results.
+    ENDIF.
+  ENDLOOP.
+
+  "----------------------------------------------------------------------
+  " 2) MÓDULOS DE FUNÇÃO
+  "----------------------------------------------------------------------
+  SELECT obj_name, devclass
+    FROM tadir
+    WHERE pgmid    = 'R3TR'
+      AND object   = 'FUGR'
+      AND devclass = @lv_pack
+    INTO TABLE @lt_fugr.
+
+  LOOP AT lt_fugr ASSIGNING FIELD-SYMBOL(<fugr>).
+    CLEAR lt_funcnames.
+
+    lv_pname = |SAPL{ <fugr>-obj_name }|.
+
+    SELECT funcname
+      FROM tfdir
+      WHERE pname = @lv_pname
+      INTO TABLE @lt_funcnames.
+
+    LOOP AT lt_funcnames ASSIGNING FIELD-SYMBOL(<fn>).
+      IF <fn>-funcname CP lv_file_pattern.
+        CLEAR ls_result.
+        ls_result-file_name      = <fn>-funcname.
+        ls_result-category       = 'FUNC'.
+        ls_result-package_name   = <fugr>-devclass.
+        ls_result-function_group = <fugr>-obj_name.
+        APPEND ls_result TO gt_results.
+      ENDIF.
+    ENDLOOP.
+  ENDLOOP.
+
+  "----------------------------------------------------------------------
+  " 3) CLASSES (CLAS) - TADIR
+  "----------------------------------------------------------------------
+  SELECT obj_name, devclass
+    FROM tadir
+    WHERE pgmid    = 'R3TR'
+      AND object   = 'CLAS'
+      AND devclass = @lv_pack
+    INTO TABLE @lt_classes.
+
+  LOOP AT lt_classes ASSIGNING FIELD-SYMBOL(<class>).
+    IF <class>-obj_name CP lv_file_pattern.
+      CLEAR ls_result.
+      ls_result-file_name      = <class>-obj_name.
+      ls_result-category       = 'CLAS'.
+      ls_result-package_name   = <class>-devclass.
+      ls_result-function_group = ''.
+      APPEND ls_result TO gt_results.
+    ENDIF.
+  ENDLOOP.
+
+  SORT gt_results BY category file_name.
+  DELETE ADJACENT DUPLICATES FROM gt_results COMPARING file_name category package_name function_group.
+
+  IF gt_results IS INITIAL.
+    MESSAGE |Nenhum objeto encontrado para o filtro "{ p_file }" no pacote "{ lv_pack }".| TYPE 'S' DISPLAY LIKE 'W'.
+  ELSE.
+    MESSAGE |{ lines( gt_results ) } objeto(s) encontrado(s).| TYPE 'S'.
+  ENDIF.
+
+ENDFORM.
+
+*&---------------------------------------------------------------------*
+*& Form EXPORT_TO_TXT
+*&---------------------------------------------------------------------*
+FORM export_to_txt.
+
+  CHECK gt_results IS NOT INITIAL.
+
+  DATA: lt_lines TYPE TABLE OF string,
+        lv_line  TYPE string,
+        lv_index TYPE i,
+        lv_count TYPE i.
+
+  lv_count = lines( gt_results ).
+
+  APPEND `[` TO lt_lines.
+
+  LOOP AT gt_results ASSIGNING FIELD-SYMBOL(<res>).
+    lv_index = sy-tabix.
+
+    APPEND `  {` TO lt_lines.
+
+    lv_line = |    "fileName": "{ <res>-file_name }",|.
+    APPEND lv_line TO lt_lines.
+
+    lv_line = |    "category": "{ <res>-category }",|.
+    APPEND lv_line TO lt_lines.
+
+    lv_line = |    "packageName": "{ <res>-package_name }",|.
+    APPEND lv_line TO lt_lines.
+
+    lv_line = |    "functionGroup": "{ <res>-function_group }"|.
+    APPEND lv_line TO lt_lines.
+
+    IF lv_index < lv_count.
+      APPEND `  },` TO lt_lines.
+    ELSE.
+      APPEND `  }` TO lt_lines.
+    ENDIF.
+  ENDLOOP.
+
+  APPEND `]` TO lt_lines.
+
+  CALL METHOD cl_gui_frontend_services=>gui_download
+    EXPORTING
+      filename                = gc_path
+      filetype                = 'ASC'
+    CHANGING
+      data_tab                = lt_lines
+    EXCEPTIONS
+      file_write_error        = 1
+      no_batch                = 2
+      gui_refuse_filetransfer = 3
+      invalid_type            = 4
+      no_authority            = 5
+      unknown_error           = 6
+      header_not_allowed      = 7
+      separator_not_allowed   = 8
+      filesize_not_allowed    = 9
+      header_too_long         = 10
+      dp_error_create         = 11
+      dp_error_send           = 12
+      dp_error_write          = 13
+      unknown_dp_error        = 14
+      access_denied           = 15
+      dp_out_of_memory        = 16
+      disk_full               = 17
+      dp_timeout              = 18
+      file_not_found          = 19
+      dataprovider_exception  = 20
+      control_flush_error     = 21
+      not_supported_by_gui    = 22
+      error_no_gui            = 23
+      OTHERS                  = 24.
+
+  IF sy-subrc <> 0.
+    MESSAGE |Erro ao gerar arquivo. SY-SUBRC: { sy-subrc }| TYPE 'E'.
+  ELSE.
+    MESSAGE |Arquivo exportado com sucesso: { gc_path }| TYPE 'S'.
+  ENDIF.
+
+ENDFORM.
