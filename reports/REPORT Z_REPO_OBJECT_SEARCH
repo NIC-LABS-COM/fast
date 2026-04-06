@@ -58,6 +58,9 @@ FORM search_repository_objects.
   DATA: lv_file_pattern TYPE string,
         lv_pname        TYPE tfdir-pname,
         lv_pack         TYPE devclass,
+        lv_all_packs    TYPE abap_bool,
+        lv_use_cp       TYPE abap_bool,
+        lv_is_custom    TYPE abap_bool,
         ls_result       TYPE ty_object_result.
 
   DATA: lt_programs  TYPE tt_tadir_basic,
@@ -77,36 +80,77 @@ FORM search_repository_objects.
     lv_pack = '$TMP'.
   ENDIF.
 
+  IF lv_pack = '*'.
+    lv_all_packs = abap_true.
+  ELSE.
+    lv_all_packs = abap_false.
+  ENDIF.
+
+  IF lv_file_pattern CS '*' OR lv_file_pattern CS '+'.
+    lv_use_cp = abap_true.
+  ELSE.
+    lv_use_cp = abap_false.
+  ENDIF.
+
   "----------------------------------------------------------------------
-  " 1) PROGRAMAS (PROG) - TADIR
+  " 1) PROGRAMAS (PROG)
   "----------------------------------------------------------------------
-  SELECT obj_name, devclass
-    FROM tadir
-    WHERE pgmid    = 'R3TR'
-      AND object   = 'PROG'
-      AND devclass = @lv_pack
-    INTO TABLE @lt_programs.
+  IF lv_all_packs = abap_true.
+    SELECT obj_name, devclass
+      FROM tadir
+      WHERE pgmid  = 'R3TR'
+        AND object = 'PROG'
+      INTO TABLE @lt_programs.
+  ELSE.
+    SELECT obj_name, devclass
+      FROM tadir
+      WHERE pgmid    = 'R3TR'
+        AND object   = 'PROG'
+        AND devclass = @lv_pack
+      INTO TABLE @lt_programs.
+  ENDIF.
 
   LOOP AT lt_programs ASSIGNING FIELD-SYMBOL(<prog>).
-    IF <prog>-obj_name CP lv_file_pattern.
+
+    CLEAR lv_is_custom.
+    IF <prog>-obj_name CP 'Z*'
+    OR <prog>-obj_name CP 'Y*'
+    OR <prog>-obj_name CP 'SAPZ*'
+    OR <prog>-obj_name CP 'SAPY*'.
+      lv_is_custom = abap_true.
+    ENDIF.
+
+    IF lv_is_custom = abap_true AND
+       ( ( lv_use_cp = abap_true  AND <prog>-obj_name CP lv_file_pattern ) OR
+         ( lv_use_cp = abap_false AND <prog>-obj_name =  lv_file_pattern ) ).
+
       CLEAR ls_result.
       ls_result-file_name      = <prog>-obj_name.
       ls_result-category       = 'PROG'.
       ls_result-package_name   = <prog>-devclass.
       ls_result-function_group = ''.
       APPEND ls_result TO gt_results.
+
     ENDIF.
   ENDLOOP.
 
   "----------------------------------------------------------------------
   " 2) MÓDULOS DE FUNÇÃO
   "----------------------------------------------------------------------
-  SELECT obj_name, devclass
-    FROM tadir
-    WHERE pgmid    = 'R3TR'
-      AND object   = 'FUGR'
-      AND devclass = @lv_pack
-    INTO TABLE @lt_fugr.
+  IF lv_all_packs = abap_true.
+    SELECT obj_name, devclass
+      FROM tadir
+      WHERE pgmid  = 'R3TR'
+        AND object = 'FUGR'
+      INTO TABLE @lt_fugr.
+  ELSE.
+    SELECT obj_name, devclass
+      FROM tadir
+      WHERE pgmid    = 'R3TR'
+        AND object   = 'FUGR'
+        AND devclass = @lv_pack
+      INTO TABLE @lt_fugr.
+  ENDIF.
 
   LOOP AT lt_fugr ASSIGNING FIELD-SYMBOL(<fugr>).
     CLEAR lt_funcnames.
@@ -119,45 +163,86 @@ FORM search_repository_objects.
       INTO TABLE @lt_funcnames.
 
     LOOP AT lt_funcnames ASSIGNING FIELD-SYMBOL(<fn>).
-      IF <fn>-funcname CP lv_file_pattern.
+
+      CLEAR lv_is_custom.
+      IF <fn>-funcname CP 'Z*'
+      OR <fn>-funcname CP 'Y*'
+      OR <fn>-funcname CP 'SAPZ*'
+      OR <fn>-funcname CP 'SAPY*'.
+        lv_is_custom = abap_true.
+      ENDIF.
+
+      IF lv_is_custom = abap_true AND
+         ( ( lv_use_cp = abap_true  AND <fn>-funcname CP lv_file_pattern ) OR
+           ( lv_use_cp = abap_false AND <fn>-funcname =  lv_file_pattern ) ).
+
         CLEAR ls_result.
         ls_result-file_name      = <fn>-funcname.
         ls_result-category       = 'FUNC'.
         ls_result-package_name   = <fugr>-devclass.
         ls_result-function_group = <fugr>-obj_name.
         APPEND ls_result TO gt_results.
+
       ENDIF.
+
     ENDLOOP.
   ENDLOOP.
 
   "----------------------------------------------------------------------
-  " 3) CLASSES (CLAS) - TADIR
+  " 3) CLASSES (CLAS)
   "----------------------------------------------------------------------
-  SELECT obj_name, devclass
-    FROM tadir
-    WHERE pgmid    = 'R3TR'
-      AND object   = 'CLAS'
-      AND devclass = @lv_pack
-    INTO TABLE @lt_classes.
+  IF lv_all_packs = abap_true.
+    SELECT obj_name, devclass
+      FROM tadir
+      WHERE pgmid  = 'R3TR'
+        AND object = 'CLAS'
+      INTO TABLE @lt_classes.
+  ELSE.
+    SELECT obj_name, devclass
+      FROM tadir
+      WHERE pgmid    = 'R3TR'
+        AND object   = 'CLAS'
+        AND devclass = @lv_pack
+      INTO TABLE @lt_classes.
+  ENDIF.
 
   LOOP AT lt_classes ASSIGNING FIELD-SYMBOL(<class>).
-    IF <class>-obj_name CP lv_file_pattern.
+
+    CLEAR lv_is_custom.
+    IF <class>-obj_name CP 'Z*'
+    OR <class>-obj_name CP 'Y*'
+    OR <class>-obj_name CP 'SAPZ*'
+    OR <class>-obj_name CP 'SAPY*'.
+      lv_is_custom = abap_true.
+    ENDIF.
+
+    IF lv_is_custom = abap_true AND
+       ( ( lv_use_cp = abap_true  AND <class>-obj_name CP lv_file_pattern ) OR
+         ( lv_use_cp = abap_false AND <class>-obj_name =  lv_file_pattern ) ).
+
       CLEAR ls_result.
       ls_result-file_name      = <class>-obj_name.
       ls_result-category       = 'CLAS'.
       ls_result-package_name   = <class>-devclass.
       ls_result-function_group = ''.
       APPEND ls_result TO gt_results.
+
     ENDIF.
+
   ENDLOOP.
 
   SORT gt_results BY category file_name.
-  DELETE ADJACENT DUPLICATES FROM gt_results COMPARING file_name category package_name function_group.
+  DELETE ADJACENT DUPLICATES FROM gt_results
+    COMPARING file_name category package_name function_group.
 
   IF gt_results IS INITIAL.
-    MESSAGE |Nenhum objeto encontrado para o filtro "{ p_file }" no pacote "{ lv_pack }".| TYPE 'S' DISPLAY LIKE 'W'.
+    IF lv_all_packs = abap_true.
+      MESSAGE |Nenhum objeto custom encontrado para o filtro "{ p_file }" em todos os pacotes.| TYPE 'S' DISPLAY LIKE 'W'.
+    ELSE.
+      MESSAGE |Nenhum objeto custom encontrado para o filtro "{ p_file }" no pacote "{ lv_pack }".| TYPE 'S' DISPLAY LIKE 'W'.
+    ENDIF.
   ELSE.
-    MESSAGE |{ lines( gt_results ) } objeto(s) encontrado(s).| TYPE 'S'.
+    MESSAGE |{ lines( gt_results ) } objeto(s) custom encontrado(s).| TYPE 'S'.
   ENDIF.
 
 ENDFORM.
