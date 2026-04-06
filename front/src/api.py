@@ -4,8 +4,9 @@ Expoe metodos que JavaScript chama via window.pywebview.api.
 """
 import json
 import logging
+import threading
 import uuid
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from core.config import (
     DEFAULT_PACKAGE, DEFAULT_REQUEST,
@@ -28,18 +29,24 @@ class Api:
         self._rabbitmq = RabbitMQService()
         self._ai = AIService()
         self._window = None
+        self._pending_responses: List[Any] = []
+        self._lock = threading.Lock()
 
     def _set_window(self, window) -> None:
         self._window = window
         self._rabbitmq.start_listener(self._on_response)
 
     def _on_response(self, response: Any) -> None:
-        if self._window:
-            try:
-                js_data = json.dumps(response, ensure_ascii=False)
-                self._window.evaluate_js(f"window.handleResponse({js_data})")
-            except Exception as e:
-                logger.error(f"Erro ao enviar resposta para UI: {e}")
+        """Called from pika thread — just queues the response."""
+        with self._lock:
+            self._pending_responses.append(response)
+
+    def get_pending_responses(self) -> List[Any]:
+        """Called from JS via polling — returns and clears queued responses."""
+        with self._lock:
+            items = self._pending_responses[:]
+            self._pending_responses.clear()
+        return items
 
     # ── Config ──────────────────────────────────────────────────────
     def get_config(self) -> Dict:

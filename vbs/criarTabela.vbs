@@ -237,16 +237,32 @@ For i = 0 To UBound(rows)
          End If
 
          If refTable <> "" Then
-            session.findById(reffTableId & "/txtDD03P_D-REFTABLE[3," & CStr(visibleRow) & "]").text = refTable
-            session.findById(reffTableId & "/txtDD03P_D-REFTABLE[3," & CStr(visibleRow) & "]").setFocus
-            session.findById(reffTableId & "/txtDD03P_D-REFTABLE[3," & CStr(visibleRow) & "]").caretPosition = Len(refTable)
+            On Error Resume Next
+            session.findById(reffTableId & "/ctxtDD03P_D-REFTABLE[1," & CStr(visibleRow) & "]").text = refTable
+            session.findById(reffTableId & "/ctxtDD03P_D-REFTABLE[1," & CStr(visibleRow) & "]").setFocus
+            session.findById(reffTableId & "/ctxtDD03P_D-REFTABLE[1," & CStr(visibleRow) & "]").caretPosition = Len(refTable)
+            If Err.Number <> 0 Then
+               Err.Clear
+               session.findById(reffTableId & "/txtDD03P_D-REFTABLE[1," & CStr(visibleRow) & "]").text = refTable
+               session.findById(reffTableId & "/txtDD03P_D-REFTABLE[1," & CStr(visibleRow) & "]").setFocus
+               session.findById(reffTableId & "/txtDD03P_D-REFTABLE[1," & CStr(visibleRow) & "]").caretPosition = Len(refTable)
+            End If
+            On Error GoTo 0
             SafeEnter
          End If
 
          If refField <> "" Then
-            session.findById(reffTableId & "/txtDD03P_D-REFFIELD[4," & CStr(visibleRow) & "]").text = refField
-            session.findById(reffTableId & "/txtDD03P_D-REFFIELD[4," & CStr(visibleRow) & "]").setFocus
-            session.findById(reffTableId & "/txtDD03P_D-REFFIELD[4," & CStr(visibleRow) & "]").caretPosition = Len(refField)
+            On Error Resume Next
+            session.findById(reffTableId & "/ctxtDD03P_D-REFFIELD[2," & CStr(visibleRow) & "]").text = refField
+            session.findById(reffTableId & "/ctxtDD03P_D-REFFIELD[2," & CStr(visibleRow) & "]").setFocus
+            session.findById(reffTableId & "/ctxtDD03P_D-REFFIELD[2," & CStr(visibleRow) & "]").caretPosition = Len(refField)
+            If Err.Number <> 0 Then
+               Err.Clear
+               session.findById(reffTableId & "/txtDD03P_D-REFFIELD[2," & CStr(visibleRow) & "]").text = refField
+               session.findById(reffTableId & "/txtDD03P_D-REFFIELD[2," & CStr(visibleRow) & "]").setFocus
+               session.findById(reffTableId & "/txtDD03P_D-REFFIELD[2," & CStr(visibleRow) & "]").caretPosition = Len(refField)
+            End If
+            On Error GoTo 0
             SafeEnter
          End If
       End If

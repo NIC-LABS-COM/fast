@@ -965,6 +965,13 @@ window.addEventListener('pywebviewready', async () => {
       $('se38-request').value = cfg.defaultRequest;
     }
     log('Conectado ao backend.', 'success');
+    // Poll for responses from RabbitMQ listener
+    setInterval(async () => {
+      try {
+        const items = await pywebview.api.get_pending_responses();
+        if (items && items.length) items.forEach(r => handleResponse(r));
+      } catch(e) { /* ignore poll errors */ }
+    }, 400);
   } catch(e) {
     log('Erro ao inicializar: ' + e, 'error');
   }

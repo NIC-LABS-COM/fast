@@ -168,25 +168,44 @@ class PublisherService:
         """
         Gera a cadeia completa de mensagens:
         dominios unicos -> elementos unicos -> tabela.
-        Ignora MANDT e campos sem prefixo Z.
+        - MANDT: ignorado (ja existe no SAP).
+        - Element Z*/Y*: cria dominio + elemento (custom).
+        - Element vazio: auto-gera Z* a partir do nome do campo.
+        - Element padrao (CHAR20, NUMC3, DATS...): usa como esta, nao cria nada.
         """
         messages: List[Dict] = []
         done_dom: Set[str] = set()
         done_elem: Set[str] = set()
 
         for item in items:
-            el = item["element_data"]
-            if el == "MANDT" or not el.startswith("Z"):
+            el = item.get("element_data", "").strip().upper()
+            field = item.get("field", "").strip().upper()
+
+            # Pula MANDT — ja existe no SAP
+            if field == "MANDT" or el == "MANDT":
+                continue
+
+            # Element vazio: auto-gera a partir do nome do campo
+            if not el:
+                el = field
+                item["element_data"] = el
+
+            # Somente cria dominio/elemento para nomes Z*/Y* (custom)
+            is_custom = el.startswith("Z") or el.startswith("Y")
+            if not is_custom:
                 continue
 
             dom = item.get("domain_data", "").strip().upper() or el
+            if not (dom.startswith("Z") or dom.startswith("Y")):
+                dom = el
+            item["domain_data"] = dom
+
             domtype = item.get("domtype", "").strip().upper() or DEFAULT_DOMAIN_DATATYPE
             domlen = item.get("domlen", "").strip() or DEFAULT_DOMAIN_LENGTH
             # Garante tamanho valido para tipos que exigem
             if domtype in TYPES_REQUIRING_LENGTH and (not domlen.isdigit() or int(domlen) < 1):
                 domlen = DEFAULT_DOMAIN_LENGTH
             desc = item.get("desc", "").strip()
-            field = item.get("field", "").strip().upper()
             dom_text = (
                 desc or field.replace("_", " ").strip() or el.replace("_", " ").strip()
             )[:30]

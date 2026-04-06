@@ -33,13 +33,13 @@ QUEUE_RESPONSES = "queue_vpn_respostas"
 
 # URLs dos scripts VBS no GitHub
 VBS_URLS: dict[str, str] = {
-    "criar_dominio":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/ScriptCriarDominio.vbs",
-    "criar_elemento": "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/ScriptCriarElemento3.vbs",
-    "criar_tabela":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/criarTabela.vbs",
-    "criar_programa":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/ScriptCriarSE38.vbs",
-    "editar_programa": "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/ScriptEditarSE38.vbs",
-    "buscar_programa": "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/baixarArquivoSAP.vbs",
-    "buscar_arquivo":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/buscaArquivo.vbs",
+    "criar_dominio":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptCriarDominio.vbs",
+    "criar_elemento": "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptCriarElemento3.vbs",
+    "criar_tabela":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/criarTabela.vbs",
+    "criar_programa":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptCriarSE38.vbs",
+    "editar_programa": "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptEditarSE38.vbs",
+    "buscar_programa": "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/baixarArquivoSAP.vbs",
+    "buscar_arquivo":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaArquivo.vbs",
 }
 
 # SE38 - Tipos de programa
