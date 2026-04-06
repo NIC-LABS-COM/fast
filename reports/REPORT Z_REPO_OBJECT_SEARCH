@@ -33,14 +33,14 @@ TYPES:
 *----------------------------------------------------------------------*
 DATA: gt_results TYPE tt_object_result.
 
-CONSTANTS gc_path TYPE string VALUE 'C:\tmp\repo_objects.txt'.
+CONSTANTS gc_path TYPE string VALUE 'C:\Temp\repo_objects.txt'.
 
 *----------------------------------------------------------------------*
 * Tela de Seleção
 *----------------------------------------------------------------------*
 SELECTION-SCREEN BEGIN OF BLOCK b01 WITH FRAME TITLE TEXT-001.
   PARAMETERS: p_file TYPE string LOWER CASE OBLIGATORY,
-              p_pack TYPE devclass OBLIGATORY.
+              p_pack TYPE string LOWER CASE OBLIGATORY.
 SELECTION-SCREEN END OF BLOCK b01.
 
 *----------------------------------------------------------------------*
@@ -56,11 +56,12 @@ START-OF-SELECTION.
 FORM search_repository_objects.
 
   DATA: lv_file_pattern TYPE string,
+        lv_pack_pattern TYPE string,
         lv_pname        TYPE tfdir-pname,
-        lv_pack         TYPE devclass,
-        lv_all_packs    TYPE abap_bool,
-        lv_use_cp       TYPE abap_bool,
+        lv_use_file_cp  TYPE abap_bool,
+        lv_use_pack_cp  TYPE abap_bool,
         lv_is_custom    TYPE abap_bool,
+        lv_pack_ok      TYPE abap_bool,
         ls_result       TYPE ty_object_result.
 
   DATA: lt_programs  TYPE tt_tadir_basic,
@@ -73,44 +74,41 @@ FORM search_repository_objects.
   lv_file_pattern = p_file.
   TRANSLATE lv_file_pattern TO UPPER CASE.
 
-  lv_pack = p_pack.
-  TRANSLATE lv_pack TO UPPER CASE.
+  lv_pack_pattern = p_pack.
+  TRANSLATE lv_pack_pattern TO UPPER CASE.
 
-  IF lv_pack = 'LOCAL'.
-    lv_pack = '$TMP'.
-  ENDIF.
-
-  IF lv_pack = '*'.
-    lv_all_packs = abap_true.
-  ELSE.
-    lv_all_packs = abap_false.
+  IF lv_pack_pattern = 'LOCAL'.
+    lv_pack_pattern = '$TMP'.
   ENDIF.
 
   IF lv_file_pattern CS '*' OR lv_file_pattern CS '+'.
-    lv_use_cp = abap_true.
+    lv_use_file_cp = abap_true.
   ELSE.
-    lv_use_cp = abap_false.
+    lv_use_file_cp = abap_false.
+  ENDIF.
+
+  IF lv_pack_pattern CS '*' OR lv_pack_pattern CS '+'.
+    lv_use_pack_cp = abap_true.
+  ELSE.
+    lv_use_pack_cp = abap_false.
   ENDIF.
 
   "----------------------------------------------------------------------
   " 1) PROGRAMAS (PROG)
   "----------------------------------------------------------------------
-  IF lv_all_packs = abap_true.
-    SELECT obj_name, devclass
-      FROM tadir
-      WHERE pgmid  = 'R3TR'
-        AND object = 'PROG'
-      INTO TABLE @lt_programs.
-  ELSE.
-    SELECT obj_name, devclass
-      FROM tadir
-      WHERE pgmid    = 'R3TR'
-        AND object   = 'PROG'
-        AND devclass = @lv_pack
-      INTO TABLE @lt_programs.
-  ENDIF.
+  SELECT obj_name, devclass
+    FROM tadir
+    WHERE pgmid  = 'R3TR'
+      AND object = 'PROG'
+    INTO TABLE @lt_programs.
 
   LOOP AT lt_programs ASSIGNING FIELD-SYMBOL(<prog>).
+
+    CLEAR lv_pack_ok.
+    IF ( lv_use_pack_cp = abap_true  AND <prog>-devclass CP lv_pack_pattern ) OR
+       ( lv_use_pack_cp = abap_false AND <prog>-devclass =  lv_pack_pattern ).
+      lv_pack_ok = abap_true.
+    ENDIF.
 
     CLEAR lv_is_custom.
     IF <prog>-obj_name CP 'Z*'
@@ -120,9 +118,10 @@ FORM search_repository_objects.
       lv_is_custom = abap_true.
     ENDIF.
 
-    IF lv_is_custom = abap_true AND
-       ( ( lv_use_cp = abap_true  AND <prog>-obj_name CP lv_file_pattern ) OR
-         ( lv_use_cp = abap_false AND <prog>-obj_name =  lv_file_pattern ) ).
+    IF lv_pack_ok = abap_true
+       AND lv_is_custom = abap_true
+       AND ( ( lv_use_file_cp = abap_true  AND <prog>-obj_name CP lv_file_pattern ) OR
+             ( lv_use_file_cp = abap_false AND <prog>-obj_name =  lv_file_pattern ) ).
 
       CLEAR ls_result.
       ls_result-file_name      = <prog>-obj_name.
@@ -137,24 +136,23 @@ FORM search_repository_objects.
   "----------------------------------------------------------------------
   " 2) MÓDULOS DE FUNÇÃO
   "----------------------------------------------------------------------
-  IF lv_all_packs = abap_true.
-    SELECT obj_name, devclass
-      FROM tadir
-      WHERE pgmid  = 'R3TR'
-        AND object = 'FUGR'
-      INTO TABLE @lt_fugr.
-  ELSE.
-    SELECT obj_name, devclass
-      FROM tadir
-      WHERE pgmid    = 'R3TR'
-        AND object   = 'FUGR'
-        AND devclass = @lv_pack
-      INTO TABLE @lt_fugr.
-  ENDIF.
+  SELECT obj_name, devclass
+    FROM tadir
+    WHERE pgmid  = 'R3TR'
+      AND object = 'FUGR'
+    INTO TABLE @lt_fugr.
 
   LOOP AT lt_fugr ASSIGNING FIELD-SYMBOL(<fugr>).
-    CLEAR lt_funcnames.
 
+    CLEAR lv_pack_ok.
+    IF ( lv_use_pack_cp = abap_true  AND <fugr>-devclass CP lv_pack_pattern ) OR
+       ( lv_use_pack_cp = abap_false AND <fugr>-devclass =  lv_pack_pattern ).
+      lv_pack_ok = abap_true.
+    ENDIF.
+
+    CHECK lv_pack_ok = abap_true.
+
+    CLEAR lt_funcnames.
     lv_pname = |SAPL{ <fugr>-obj_name }|.
 
     SELECT funcname
@@ -172,9 +170,9 @@ FORM search_repository_objects.
         lv_is_custom = abap_true.
       ENDIF.
 
-      IF lv_is_custom = abap_true AND
-         ( ( lv_use_cp = abap_true  AND <fn>-funcname CP lv_file_pattern ) OR
-           ( lv_use_cp = abap_false AND <fn>-funcname =  lv_file_pattern ) ).
+      IF lv_is_custom = abap_true
+         AND ( ( lv_use_file_cp = abap_true  AND <fn>-funcname CP lv_file_pattern ) OR
+               ( lv_use_file_cp = abap_false AND <fn>-funcname =  lv_file_pattern ) ).
 
         CLEAR ls_result.
         ls_result-file_name      = <fn>-funcname.
@@ -191,22 +189,19 @@ FORM search_repository_objects.
   "----------------------------------------------------------------------
   " 3) CLASSES (CLAS)
   "----------------------------------------------------------------------
-  IF lv_all_packs = abap_true.
-    SELECT obj_name, devclass
-      FROM tadir
-      WHERE pgmid  = 'R3TR'
-        AND object = 'CLAS'
-      INTO TABLE @lt_classes.
-  ELSE.
-    SELECT obj_name, devclass
-      FROM tadir
-      WHERE pgmid    = 'R3TR'
-        AND object   = 'CLAS'
-        AND devclass = @lv_pack
-      INTO TABLE @lt_classes.
-  ENDIF.
+  SELECT obj_name, devclass
+    FROM tadir
+    WHERE pgmid  = 'R3TR'
+      AND object = 'CLAS'
+    INTO TABLE @lt_classes.
 
   LOOP AT lt_classes ASSIGNING FIELD-SYMBOL(<class>).
+
+    CLEAR lv_pack_ok.
+    IF ( lv_use_pack_cp = abap_true  AND <class>-devclass CP lv_pack_pattern ) OR
+       ( lv_use_pack_cp = abap_false AND <class>-devclass =  lv_pack_pattern ).
+      lv_pack_ok = abap_true.
+    ENDIF.
 
     CLEAR lv_is_custom.
     IF <class>-obj_name CP 'Z*'
@@ -216,9 +211,10 @@ FORM search_repository_objects.
       lv_is_custom = abap_true.
     ENDIF.
 
-    IF lv_is_custom = abap_true AND
-       ( ( lv_use_cp = abap_true  AND <class>-obj_name CP lv_file_pattern ) OR
-         ( lv_use_cp = abap_false AND <class>-obj_name =  lv_file_pattern ) ).
+    IF lv_pack_ok = abap_true
+       AND lv_is_custom = abap_true
+       AND ( ( lv_use_file_cp = abap_true  AND <class>-obj_name CP lv_file_pattern ) OR
+             ( lv_use_file_cp = abap_false AND <class>-obj_name =  lv_file_pattern ) ).
 
       CLEAR ls_result.
       ls_result-file_name      = <class>-obj_name.
@@ -236,11 +232,7 @@ FORM search_repository_objects.
     COMPARING file_name category package_name function_group.
 
   IF gt_results IS INITIAL.
-    IF lv_all_packs = abap_true.
-      MESSAGE |Nenhum objeto custom encontrado para o filtro "{ p_file }" em todos os pacotes.| TYPE 'S' DISPLAY LIKE 'W'.
-    ELSE.
-      MESSAGE |Nenhum objeto custom encontrado para o filtro "{ p_file }" no pacote "{ lv_pack }".| TYPE 'S' DISPLAY LIKE 'W'.
-    ENDIF.
+    MESSAGE |Nenhum objeto custom encontrado para arquivo "{ p_file }" e pacote "{ p_pack }".| TYPE 'S' DISPLAY LIKE 'W'.
   ELSE.
     MESSAGE |{ lines( gt_results ) } objeto(s) custom encontrado(s).| TYPE 'S'.
   ENDIF.
