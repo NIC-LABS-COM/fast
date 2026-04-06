@@ -79,11 +79,17 @@ Sub CheckActivationPopup(stepName)
     Set shell = session.findById("wnd[0]/shellcont/shell/shellcont[1]/shell")
     If Not shell Is Nothing Then
         rowCount = shell.RowCount
+        Dim lineNr
         For i = 0 To rowCount - 1
             errText = shell.GetCellValue(i, "TEXT")
             If errText <> "" Then
-                If fullError <> "" Then fullError = fullError & " | "
-                fullError = fullError & "Linha " & shell.GetCellValue(i, "LINE") & ": " & errText
+                lineNr = shell.GetCellValue(i, "LINE")
+                If lineNr <> "" Then
+                    If fullError <> "" Then fullError = fullError & " | "
+                    fullError = fullError & "Linha " & lineNr & ": " & errText
+                Else
+                    fullError = fullError & " " & errText
+                End If
             End If
         Next
     End If

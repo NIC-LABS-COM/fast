@@ -106,6 +106,7 @@ If UCase(Trim(packageName)) <> "$TMP" Then
 End If
 
 WScript.Sleep 1000
+CheckActivationPopup "Ativar dominio " & domainName
 CheckSapError "Ativar dominio " & domainName
 
 WScript.Echo "Dominio " & domainName & " criado com sucesso."
@@ -123,4 +124,71 @@ Sub CheckSapError(stepName)
         WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & sbarText
         WScript.Quit 1
     End If
+End Sub
+
+' ---- Sub para verificar popup de erro de ativacao (wnd[1]) ----
+Sub CheckActivationPopup(stepName)
+    Dim popup
+    On Error Resume Next
+    Set popup = session.findById("wnd[1]")
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo 0
+        Exit Sub
+    End If
+    On Error GoTo 0
+    If popup Is Nothing Then Exit Sub
+
+    Dim popupTitle
+    On Error Resume Next
+    popupTitle = popup.Text
+    On Error GoTo 0
+
+    Dim lowerTitle
+    lowerTitle = LCase(popupTitle)
+    If InStr(lowerTitle, "erro") = 0 And InStr(lowerTitle, "error") = 0 _
+       And InStr(lowerTitle, "ativ") = 0 And InStr(lowerTitle, "syntax") = 0 Then
+        Exit Sub
+    End If
+
+    ' Tenta clicar em Nao/Processar para ver detalhes
+    On Error Resume Next
+    session.findById("wnd[1]/usr/btnBUTTON_2").press
+    If Err.Number <> 0 Then
+        Err.Clear
+        popup.findById("tbar[0]/btn[2]").press
+    End If
+    On Error GoTo 0
+    WScript.Sleep 1500
+
+    ' Tenta ler erros detalhados do grid
+    Dim shell, rowCount, i, errText, fullError
+    fullError = ""
+    On Error Resume Next
+    Set shell = session.findById("wnd[0]/shellcont/shell/shellcont[1]/shell")
+    If Not shell Is Nothing Then
+        rowCount = shell.RowCount
+        Dim lineNr
+        For i = 0 To rowCount - 1
+            errText = shell.GetCellValue(i, "TEXT")
+            If errText <> "" Then
+                lineNr = shell.GetCellValue(i, "LINE")
+                If lineNr <> "" Then
+                    If fullError <> "" Then fullError = fullError & " | "
+                    fullError = fullError & "Linha " & lineNr & ": " & errText
+                Else
+                    fullError = fullError & " " & errText
+                End If
+            End If
+        Next
+    End If
+    On Error GoTo 0
+
+    If fullError = "" Then fullError = popupTitle
+
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
+
+    WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & fullError
+    WScript.Quit 1
 End Sub
