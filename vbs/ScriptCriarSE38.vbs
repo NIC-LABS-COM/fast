@@ -37,7 +37,7 @@ End Sub
 
 ' ---- Sub para verificar popup de erro de ativacao (wnd[1]) ----
 Sub CheckActivationPopup(stepName)
-    Dim popup, popupText, popupTitle
+    Dim popup
     On Error Resume Next
     Set popup = session.findById("wnd[1]")
     If Err.Number <> 0 Then
@@ -46,61 +46,57 @@ Sub CheckActivationPopup(stepName)
         Exit Sub
     End If
     On Error GoTo 0
-
     If popup Is Nothing Then Exit Sub
 
-    ' Captura titulo da janela popup
+    ' Le titulo do popup
+    Dim popupTitle
     On Error Resume Next
     popupTitle = popup.Text
-    Err.Clear
+    On Error GoTo 0
 
-    ' Tenta capturar texto detalhado do erro
-    popupText = ""
-    Dim txtField
-    Set txtField = popup.findById("usr/txtMESSTXT1")
-    If Not txtField Is Nothing Then
-        popupText = txtField.Text
+    ' Verifica se eh popup de erro de ativacao
+    Dim lowerTitle
+    lowerTitle = LCase(popupTitle)
+    If InStr(lowerTitle, "erro") = 0 And InStr(lowerTitle, "error") = 0 _
+       And InStr(lowerTitle, "ativ") = 0 And InStr(lowerTitle, "syntax") = 0 Then
+        Exit Sub
     End If
-    Err.Clear
 
-    ' Se nao encontrou MESSTXT1, tenta campo de texto generico
-    If popupText = "" Then
-        Set txtField = popup.findById("usr/txtSPOPLI-TEXTLINE1")
-        If Not txtField Is Nothing Then
-            popupText = txtField.Text
-        End If
+    ' Clica em "Nao" / "Processar" (btnBUTTON_2) para mostrar lista de erros
+    On Error Resume Next
+    session.findById("wnd[1]/usr/btnBUTTON_2").press
+    If Err.Number <> 0 Then
         Err.Clear
+        popup.findById("tbar[0]/btn[2]").press
     End If
+    On Error GoTo 0
+    WScript.Sleep 1500
 
-    ' Se nao encontrou nenhum campo de texto, usa o titulo
-    If popupText = "" Then
-        popupText = popupTitle
+    ' Le erros detalhados do grid de sintaxe
+    Dim shell, rowCount, i, errText, fullError
+    fullError = ""
+    On Error Resume Next
+    Set shell = session.findById("wnd[0]/shellcont/shell/shellcont[1]/shell")
+    If Not shell Is Nothing Then
+        rowCount = shell.RowCount
+        For i = 0 To rowCount - 1
+            errText = shell.GetCellValue(i, "TEXT")
+            If errText <> "" Then
+                If fullError <> "" Then fullError = fullError & " | "
+                fullError = fullError & "Linha " & shell.GetCellValue(i, "LINE") & ": " & errText
+            End If
+        Next
     End If
     On Error GoTo 0
 
-    ' Verifica se eh um popup de erro (contem palavras chave de erro)
-    Dim lowerText
-    lowerText = LCase(popupText & " " & popupTitle)
-    If InStr(lowerText, "erro") > 0 Or InStr(lowerText, "error") > 0 _
-       Or InStr(lowerText, "falta") > 0 Or InStr(lowerText, "sintaxe") > 0 _
-       Or InStr(lowerText, "syntax") > 0 Or InStr(lowerText, "encerrado") > 0 Then
-        ' Clica em Cancelar para fechar o popup
-        On Error Resume Next
-        popup.findById("tbar[0]/btn[2]").press
-        If Err.Number <> 0 Then
-            Err.Clear
-            popup.Close
-        End If
-        On Error GoTo 0
-        WScript.Sleep 500
+    If fullError = "" Then fullError = popupTitle
 
-        ' Volta para tela inicial
-        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
-        session.findById("wnd[0]").sendVKey 0
+    ' Volta para tela inicial
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
 
-        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & popupText
-        WScript.Quit 1
-    End If
+    WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & fullError
+    WScript.Quit 1
 End Sub
 
 programName = "ZMM_TESTE_PARIMPAR"

@@ -20,44 +20,66 @@ End Sub
 
 ' ---- Sub para verificar popup de erro de ativação (wnd[1]) ----
 Sub CheckActivationPopup(stepName)
-    Dim popupWnd, msgText, popupTitle
+    Dim popup
     On Error Resume Next
-    Set popupWnd = session.findById("wnd[1]")
+    Set popup = session.findById("wnd[1]")
+    If Err.Number <> 0 Then
+        Err.Clear
+        On Error GoTo 0
+        Exit Sub
+    End If
     On Error GoTo 0
-    If popupWnd Is Nothing Then Exit Sub
+    If popup Is Nothing Then Exit Sub
 
-    msgText = ""
+    ' Le titulo do popup
+    Dim popupTitle
     On Error Resume Next
-    msgText = session.findById("wnd[1]/usr/txtMESSTXT1").Text
+    popupTitle = popup.Text
     On Error GoTo 0
-    If msgText = "" Then
-        On Error Resume Next
-        msgText = session.findById("wnd[1]/usr/txtSPOPLI-TEXTLINE1").Text
-        On Error GoTo 0
-    End If
-    If msgText = "" Then
-        On Error Resume Next
-        popupTitle = popupWnd.Text
-        On Error GoTo 0
-        If popupTitle <> "" Then msgText = popupTitle
+
+    ' Verifica se eh popup de erro de ativacao
+    Dim lowerTitle
+    lowerTitle = LCase(popupTitle)
+    If InStr(lowerTitle, "erro") = 0 And InStr(lowerTitle, "error") = 0 _
+       And InStr(lowerTitle, "ativ") = 0 And InStr(lowerTitle, "syntax") = 0 Then
+        Exit Sub
     End If
 
-    Dim lower
-    lower = LCase(msgText)
-    If InStr(lower, "erro") > 0 Or InStr(lower, "error") > 0 _
-       Or InStr(lower, "falta") > 0 Or InStr(lower, "sintaxe") > 0 _
-       Or InStr(lower, "syntax") > 0 Or InStr(lower, "encerrado") > 0 Then
-
-        On Error Resume Next
-        session.findById("wnd[1]/tbar[0]/btn[2]").press
-        On Error GoTo 0
-        Pause 0.5
-
-        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
-        session.findById("wnd[0]").sendVKey 0
-        WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & msgText
-        WScript.Quit 1
+    ' Clica em "Nao" / "Processar" (btnBUTTON_2) para mostrar lista de erros
+    On Error Resume Next
+    session.findById("wnd[1]/usr/btnBUTTON_2").press
+    If Err.Number <> 0 Then
+        Err.Clear
+        popup.findById("tbar[0]/btn[2]").press
     End If
+    On Error GoTo 0
+    Pause 1.5
+
+    ' Le erros detalhados do grid de sintaxe
+    Dim shell, rowCount, i, errText, fullError
+    fullError = ""
+    On Error Resume Next
+    Set shell = session.findById("wnd[0]/shellcont/shell/shellcont[1]/shell")
+    If Not shell Is Nothing Then
+        rowCount = shell.RowCount
+        For i = 0 To rowCount - 1
+            errText = shell.GetCellValue(i, "TEXT")
+            If errText <> "" Then
+                If fullError <> "" Then fullError = fullError & " | "
+                fullError = fullError & "Linha " & shell.GetCellValue(i, "LINE") & ": " & errText
+            End If
+        Next
+    End If
+    On Error GoTo 0
+
+    If fullError = "" Then fullError = popupTitle
+
+    ' Volta para tela inicial
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
+
+    WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & fullError
+    WScript.Quit 1
 End Sub
 
 Sub Pause(seconds)
