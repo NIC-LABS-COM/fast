@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ABAP Dictionary</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #111417; --surface: #191C1F; --surface-container: #1D2023;
+  --surface-high: #272A2E; --surface-highest: #323538;
+  --primary: #FFD87F; --primary-container: #F0B90B; --on-primary: #3F2E00;
+  --on-surface: #E1E2E7; --on-surface-variant: #D3C5AC;
+  --outline: #9B8F79; --outline-variant: #4F4633;
+  --error: #FFB4AB; --error-bg: #93000A; --success: #81C784;
+  --font: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Consolas', 'Cascadia Code', 'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--on-surface); overflow: hidden; height: 100vh; }
+::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--surface-highest); border-radius: 10px; }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+
+/* Layout */
+#sidebar { position: fixed; left: 0; top: 0; width: 220px; height: 100vh; background: var(--bg); display: flex; flex-direction: column; padding: 24px 12px; z-index: 50; border-right: 1px solid var(--outline-variant); }
+#sidebar .logo { padding: 0 8px; margin-bottom: 32px; }
+#sidebar .logo h1 { font-size: 17px; font-weight: 800; letter-spacing: -0.5px; }
+#sidebar .logo p { font-size: 9px; color: var(--on-surface-variant); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+#sidebar nav { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+#sidebar nav a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; color: var(--on-surface-variant); text-decoration: none; font-size: 13px; font-weight: 500; border-radius: 8px; transition: all .15s; cursor: pointer; }
+#sidebar nav a:hover { background: var(--surface-highest); color: var(--on-surface); }
+#sidebar nav a.active { color: var(--primary); background: var(--surface); border-right: 2px solid var(--primary); font-weight: 700; }
+#sidebar nav a.active .material-symbols-outlined { font-variation-settings: 'FILL' 1, 'wght' 400; }
+
+#main { margin-left: 220px; height: 100vh; display: flex; flex-direction: column; }
+#content { flex: 1; overflow-y: auto; padding: 24px 32px; }
+.page { display: none; } .page.active { display: block; }
+.page-title { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 4px; }
+.page-subtitle { font-size: 12px; color: var(--on-surface-variant); margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+.page-subtitle .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--primary); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* Cards */
+.card { background: var(--surface); border-radius: 10px; padding: 20px; border: 1px solid rgba(79,70,51,.15); margin-bottom: 16px; }
+.card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--on-surface-variant); margin-bottom: 16px; }
+.card-gold { border-left: 2px solid rgba(255,216,127,.3); }
+
+/* Forms */
+.form-grid { display: grid; gap: 12px; }
+.form-grid-2 { grid-template-columns: 1fr 1fr; }
+.form-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.form-grid-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+.form-group label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--on-surface-variant); margin-bottom: 4px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; background: var(--surface-highest); border: none; border-radius: 6px; padding: 8px 10px;
+  font-size: 13px; color: var(--on-surface); font-family: var(--font); outline: none; transition: box-shadow .15s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { box-shadow: 0 1px 0 0 var(--primary); }
+.form-group input.mono { font-family: var(--mono); color: var(--primary); }
+.form-group textarea { resize: vertical; min-height: 80px; }
+.form-group select { cursor: pointer; }
+.form-check { display: flex; align-items: center; gap: 6px; }
+.form-check input[type=checkbox] { accent-color: var(--primary); width: 16px; height: 16px; }
+.form-check label { font-size: 11px; color: var(--on-surface-variant); cursor: pointer; }
+
+/* Buttons */
+.btn { padding: 8px 20px; border: none; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-container)); color: var(--on-primary); }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 0 15px rgba(255,216,127,.25); }
+.btn-outline { background: transparent; border: 1px solid var(--outline-variant); color: var(--on-surface-variant); }
+.btn-outline:hover:not(:disabled) { background: var(--surface-highest); color: var(--on-surface); }
+.btn-error { background: rgba(147,0,10,.2); border: 1px solid rgba(147,0,10,.4); color: var(--error); }
+.btn-error:hover:not(:disabled) { background: rgba(147,0,10,.4); }
+.btn-ai { background: rgba(255,216,127,.1); border: 1px solid rgba(255,216,127,.3); color: var(--primary); }
+.btn-ai:hover:not(:disabled) { background: rgba(255,216,127,.2); }
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; padding-top: 12px; border-top: 1px solid rgba(79,70,51,.1); margin-top: 12px; }
+
+/* AI Section */
+.ai-section { background: var(--surface); border-radius: 10px; padding: 20px; border: 1px solid rgba(79,70,51,.1); margin-bottom: 20px; }
+.ai-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.ai-header .material-symbols-outlined { color: var(--primary); font-variation-settings: 'FILL' 1; }
+.ai-header h2 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--primary); }
+.ai-prompt { width: 100%; background: var(--bg); border: none; border-radius: 8px; padding: 12px; color: var(--on-surface); font-size: 13px; font-family: var(--font); min-height: 80px; resize: vertical; outline: none; }
+.ai-prompt::placeholder { color: rgba(211,197,172,.4); }
+.ai-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+/* Table grid */
+.grid-container { overflow-x: auto; background: var(--surface); border-radius: 10px; border: 1px solid rgba(79,70,51,.1); margin-bottom: 16px; }
+.grid-container table { width: 100%; border-collapse: collapse; }
+.grid-container th { background: var(--surface-high); padding: 10px 12px; text-align: left; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--on-surface-variant); }
+.grid-container th.center { text-align: center; }
+.grid-container td { padding: 8px 12px; font-size: 13px; border-bottom: 1px solid rgba(50,53,56,.3); }
+.grid-container tr { transition: background .1s; cursor: pointer; }
+.grid-container tr:hover { background: rgba(50,53,56,.4); }
+.grid-container tr.selected { background: rgba(255,216,127,.08); }
+.grid-container td.mono { font-family: var(--mono); color: var(--primary); }
+.grid-container td.center { text-align: center; }
+.grid-container td.muted { color: var(--on-surface-variant); }
+.grid-info { display: flex; gap: 16px; font-size: 10px; color: var(--on-surface-variant); font-family: var(--mono); }
+
+/* Code editor */
+.code-editor { width: 100%; min-height: 300px; background: var(--bg); border: 1px solid var(--outline-variant); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 12px; color: var(--on-surface); line-height: 1.6; resize: vertical; outline: none; tab-size: 2; }
+.code-editor:focus { border-color: var(--primary); }
+.code-split { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.code-split-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--on-surface-variant); margin-bottom: 4px; }
+
+/* Query tabs */
+.query-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+.query-tab { padding: 6px 14px; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--on-surface-variant); background: transparent; border: 1px solid transparent; cursor: pointer; transition: all .15s; font-family: var(--font); }
+.query-tab:hover { background: var(--surface-highest); color: var(--on-surface); }
+.query-tab.active { background: var(--surface); color: var(--primary); border-color: var(--primary); }
+.query-panel { display: none; } .query-panel.active { display: block; }
+.query-result { background: var(--bg); border: 1px solid var(--outline-variant); border-radius: 8px; padding: 12px; font-family: var(--mono); font-size: 12px; color: var(--on-surface); min-height: 250px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; margin-top: 12px; }
+
+/* Log panel */
+#log-panel { border-top: 1px solid var(--outline-variant); background: var(--surface); max-height: 160px; overflow-y: auto; padding: 8px 16px; flex-shrink: 0; }
+#log-panel .log-entry { font-size: 11px; padding: 2px 0; font-family: var(--mono); line-height: 1.5; }
+#log-panel .log-entry.success { color: var(--success); }
+#log-panel .log-entry.error { color: var(--error); }
+#log-panel .log-entry.info { color: var(--on-surface-variant); }
+
+/* Status bar */
+#status-bar { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px; background: var(--bg); border-top: 1px solid var(--outline-variant); flex-shrink: 0; }
+#status-bar #status-text { font-size: 11px; color: var(--on-surface-variant); }
+#status-bar button { font-size: 10px; }
+
+/* Toast */
+#toast-container { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 12px 20px; border-radius: 8px; font-size: 12px; font-weight: 500; max-width: 400px; animation: slideIn .2s ease; font-family: var(--font); }
+.toast.success { background: #1b3a1f; color: var(--success); border: 1px solid rgba(129,199,132,.3); }
+.toast.error { background: #3a1b1b; color: var(--error); border: 1px solid rgba(255,180,171,.3); }
+.toast.info { background: var(--surface-high); color: var(--on-surface); border: 1px solid var(--outline-variant); }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* Responsive helpers */
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.gap-8 { gap: 8px; } .gap-16 { gap: 16px; }
+.mb-8 { margin-bottom: 8px; } .mb-16 { margin-bottom: 16px; } .mb-24 { margin-bottom: 24px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="logo">
+    <h1>ABAP Dictionary</h1>
+    <p>v3.0.0 — Architect</p>
+  </div>
+  <nav>
+    <a onclick="showPage('domains')" data-page="domains"><span class="material-symbols-outlined">lan</span>Domínios</a>
+    <a onclick="showPage('elements')" data-page="elements"><span class="material-symbols-outlined">data_object</span>Elementos</a>
+    <a onclick="showPage('tables')" data-page="tables" class="active"><span class="material-symbols-outlined">table_rows</span>Tabelas</a>
+    <a onclick="showPage('se38')" data-page="se38"><span class="material-symbols-outlined">code</span>SE38 — ABAP</a>
+    <a onclick="showPage('queries')" data-page="queries"><span class="material-symbols-outlined">terminal</span>Queries</a>
+  </nav>
+</aside>
+
+<!-- Main -->
+<div id="main">
+<div id="content">
+
+<!-- ════════════════════════ PAGE: DOMAINS ════════════════════════ -->
+<section id="page-domains" class="page">
+  <h1 class="page-title">Criar Domínio</h1>
+  <p class="page-subtitle"><span class="dot"></span>SE11 — Domain Object</p>
+
+  <div class="card card-gold">
+    <div class="card-title">Parâmetros do Domínio</div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label>Nome do Domínio</label><input id="dom-name" class="mono" placeholder="Z_MM_CNPJ"/></div>
+      <div class="form-group"><label>Texto</label><input id="dom-text" placeholder="Descricao curta"/></div>
+      <div class="form-group"><label>Datatype</label><input id="dom-datatype" placeholder="CHAR" value="CHAR"/></div>
+      <div class="form-group"><label>Tamanho</label><input id="dom-length" placeholder="15" value="15"/></div>
+      <div class="form-group"><label>Pacote</label><input id="dom-package" placeholder="$TMP"/></div>
+      <div class="form-group"><label>Request</label><input id="dom-request" placeholder="DEVK900123"/></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="publishDomain()"><span class="material-symbols-outlined" style="font-size:14px">publish</span>Enviar para Fila</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Observações</div>
+    <p style="font-size:12px;color:var(--on-surface-variant);line-height:1.8">
+      1. Preencha os dados do domínio e clique em Enviar para Fila.<br/>
+      2. O consumer na máquina com SAP vai baixar e executar o VBS.<br/>
+      3. Acompanhe o resultado no Log abaixo.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════════════ PAGE: ELEMENTS ════════════════════════ -->
+<section id="page-elements" class="page">
+  <h1 class="page-title">Criar Elemento de Dados</h1>
+  <p class="page-subtitle"><span class="dot"></span>SE11 — Data Element</p>
+
+  <div class="card card-gold">
+    <div class="card-title">Parâmetros do Elemento</div>
+    <div class="form-grid form-grid-2">
+      <div class="form-group"><label>Nome do Elemento</label><input id="elem-name" class="mono" placeholder="Z_MM_CNPJ"/></div>
+      <div class="form-group"><label>Descrição</label><input id="elem-text" placeholder="Descricao do elemento"/></div>
+      <div class="form-group"><label>Domínio</label><input id="elem-domain" class="mono" placeholder="Z_MM_CNPJ"/></div>
+      <div class="form-group"><label>Pacote</label><input id="elem-package" placeholder="$TMP"/></div>
+      <div class="form-group"><label>Request</label><input id="elem-request" placeholder="DEVK900123"/></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="publishElement()"><span class="material-symbols-outlined" style="font-size:14px">publish</span>Enviar para Fila</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Observações</div>
+    <p style="font-size:12px;color:var(--on-surface-variant);line-height:1.8">
+      1. O elemento será criado apontando para o domínio informado.<br/>
+      2. Certifique-se de que o domínio já existe antes de criar o elemento.<br/>
+      3. Acompanhe o resultado no Log abaixo.
+    </p>
+  </div>
+</section>
+
+<!-- ════════════════════════ PAGE: TABLES ════════════════════════ -->
+<section id="page-tables" class="page active">
+  <h1 class="page-title">Criar Tabela</h1>
+  <p class="page-subtitle"><span class="dot"></span>SE11 — Transparent Table</p>
+
+  <!-- AI -->
+  <div class="ai-section">
+    <div class="ai-header"><span class="material-symbols-outlined">auto_awesome</span><h2>IA — Gerador de Tabela SAP</h2></div>
+    <textarea id="tab-ai-prompt" class="ai-prompt" placeholder="Ex: Crie uma tabela de vendas com cabeçalho e itens, incluindo campos de data, valor total e cliente..."></textarea>
+    <div class="ai-buttons">
+      <button class="btn btn-outline" onclick="publishTable()">Enviar para Fila</button>
+      <button id="btn-tab-ai" class="btn btn-ai" onclick="generateTableAI()"><span class="material-symbols-outlined" style="font-size:14px">rocket_launch</span>Enviar para IA</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div style="display:grid;grid-template-columns:1fr 2fr;gap:16px;" class="mb-16">
+    <div class="card card-gold">
+      <div class="card-title">Cabeçalho (Header)</div>
+      <div class="form-grid" style="grid-template-columns:1fr;">
+        <div class="form-group"><label>Request</label><input id="tab-request" placeholder="DEVK900123"/></div>
+        <div class="form-group"><label>Pacote</label><input id="tab-package" placeholder="$TMP"/></div>
+        <div class="form-group"><label>Tabela</label><input id="tab-name" class="mono" placeholder="ZSALES_HEADER"/></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="form-grid form-grid-2">
+        <div class="form-group" style="grid-column:1/-1"><label>Descrição</label><input id="tab-text" placeholder="Short text for table purpose..."/></div>
+        <div class="form-group">
+          <label>TABART (Data Class)</label>
+          <select id="tab-tabart">
+            <option value="APPL0">APPL0 — Dados mestre</option>
+            <option value="APPL1">APPL1 — Dados de movimento</option>
+            <option value="APPL2">APPL2 — Organização e customizing</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>TABKAT (Size Category)</label>
+          <select id="tab-tabkat">
+            <option value="0">0 — até 17.000</option>
+            <option value="1">1 — até 68.000</option>
+            <option value="2">2 — até 270.000</option>
+            <option value="3" selected>3 — até 1.000.000</option>
+            <option value="4">4 — até 4.300.000</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fields Grid -->
+  <div class="flex-between mb-8">
+    <div class="card-title" style="margin:0">Campos da Tabela (Fields)</div>
+    <div class="grid-info"><span id="tab-fields-count">FIELDS: 1</span><span id="tab-keys-count">KEYS: 1</span></div>
+  </div>
+  <div class="grid-container">
+    <table>
+      <thead><tr>
+        <th>Field</th><th class="center">Key</th><th class="center">Not Null</th>
+        <th>Element</th><th>Domain</th><th>Desc</th>
+        <th>Tipo</th><th>Tam</th><th>Ref Table</th><th>Ref Field</th>
+      </tr></thead>
+      <tbody id="tab-grid-body">
+        <tr onclick="selectRow(this)" data-row='{"field":"MANDT","key":"1","notnull":"1","element_data":"MANDT","domain_data":"","desc":"Mandante","domtype":"","domlen":"","ref_table":"","ref_field":""}'>
+          <td class="mono">MANDT</td><td class="center">✓</td><td class="center">✓</td>
+          <td class="muted">MANDT</td><td class="muted"></td><td>Mandante</td>
+          <td class="muted"></td><td></td><td></td><td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add Field -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px"><span class="material-symbols-outlined" style="font-size:16px">add_circle</span>Adicionar / Editar Campo</div>
+    <div class="form-grid form-grid-5">
+      <div class="form-group"><label>Field</label><input id="tf-field" class="mono"/></div>
+      <div class="form-group"><label>Element</label><input id="tf-element"/></div>
+      <div class="form-group"><label>Domain</label><input id="tf-domain"/></div>
+      <div class="form-group"><label>Desc</label><input id="tf-desc"/></div>
+      <div class="form-group"><label>Tipo</label><input id="tf-domtype" value="CHAR"/></div>
+    </div>
+    <div class="form-grid form-grid-5" style="margin-top:8px">
+      <div class="form-group"><label>Tamanho</label><input id="tf-domlen" value="15"/></div>
+      <div class="form-group"><label>Ref Table</label><input id="tf-reftab"/></div>
+      <div class="form-group"><label>Ref Field</label><input id="tf-reffield"/></div>
+      <div class="form-check" style="padding-top:18px"><input type="checkbox" id="tf-key" checked/><label for="tf-key">KEY</label></div>
+      <div class="form-check" style="padding-top:18px"><input type="checkbox" id="tf-notnull" checked/><label for="tf-notnull">NOT NULL</label></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-error" onclick="removeTableRow()"><span class="material-symbols-outlined" style="font-size:14px">delete</span>Remover</button>
+      <button class="btn btn-outline" onclick="updateTableRow()"><span class="material-symbols-outlined" style="font-size:14px">refresh</span>Atualizar</button>
+      <button class="btn btn-primary" onclick="addTableRow()"><span class="material-symbols-outlined" style="font-size:14px">save</span>Adicionar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ PAGE: SE38 ════════════════════════ -->
+<section id="page-se38" class="page">
+  <h1 class="page-title">SE38 — Programa ABAP</h1>
+  <p class="page-subtitle"><span class="dot"></span>Create / Edit ABAP Programs</p>
+
+  <!-- AI -->
+  <div class="ai-section">
+    <div class="ai-header"><span class="material-symbols-outlined">auto_awesome</span><h2>IA — Gerador de Programa ABAP</h2></div>
+    <textarea id="se38-ai-prompt" class="ai-prompt" placeholder="Ex: Crie um programa que leia uma tabela de pedidos e gere um ALV com totais..."></textarea>
+    <div class="ai-buttons">
+      <button id="btn-se38-ai" class="btn btn-ai" onclick="generateProgramAI()"><span class="material-symbols-outlined" style="font-size:14px">rocket_launch</span>Enviar para IA</button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="card card-gold mb-16">
+    <div class="card-title">Parâmetros do Programa</div>
+    <div class="form-grid form-grid-3">
+      <div class="form-group">
+        <label>Nome do Programa</label>
+        <div style="display:flex;gap:6px"><input id="se38-name" class="mono" placeholder="Z_REPORT_TEST" style="flex:1"/><button id="btn-buscar" class="btn btn-outline hidden" onclick="buscarPrograma()" style="white-space:nowrap">Buscar</button></div>
+      </div>
+      <div class="form-group"><label>Título</label><input id="se38-title" placeholder="Titulo do programa"/></div>
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="se38-type">
+          <option value="1">Report</option><option value="M">Module Pool</option>
+          <option value="I">Include</option><option value="S">Subroutine Pool</option>
+          <option value="F">Function Group</option><option value="K">Class Pool</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Pacote</label><input id="se38-package" placeholder="$TMP"/></div>
+      <div class="form-group"><label>Request</label><input id="se38-request" placeholder="DEVK900123"/></div>
+      <div class="form-group">
+        <label>Fluxo</label>
+        <select id="se38-flow" onchange="onFlowChange()">
+          <option value="Criar e Ativar">Criar e Ativar</option>
+          <option value="FIX">FIX — Editar Existente</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code Editor -->
+  <div class="card mb-16">
+    <div class="flex-between mb-8">
+      <div class="card-title" style="margin:0">Código Fonte ABAP</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline" onclick="clearCode()"><span class="material-symbols-outlined" style="font-size:14px">delete_sweep</span>Limpar</button>
+      </div>
+    </div>
+    <div id="code-single">
+      <textarea id="se38-code" class="code-editor" placeholder="REPORT z_example.&#10;&#10;START-OF-SELECTION.&#10;  WRITE: 'Hello World'."></textarea>
+    </div>
+    <div id="code-comparison" class="hidden">
+      <div class="code-split">
+        <div><div class="code-split-label">Original (SAP)</div><textarea id="se38-code-original" class="code-editor" readonly style="background:rgba(17,20,23,.8)"></textarea></div>
+        <div><div class="code-split-label">Modificado (IA)</div><textarea id="se38-code-modified" class="code-editor"></textarea></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="publishProgram()"><span class="material-symbols-outlined" style="font-size:14px">publish</span>Enviar para Fila</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════ PAGE: QUERIES ════════════════════════ -->
+<section id="page-queries" class="page">
+  <h1 class="page-title">Queries</h1>
+  <p class="page-subtitle"><span class="dot"></span>Consultas SAP via RabbitMQ</p>
+
+  <div class="query-tabs">
+    <button class="query-tab active" onclick="showQueryTab('q-requests',this)">Requests</button>
+    <button class="query-tab" onclick="showQueryTab('q-reports',this)">Reports</button>
+    <button class="query-tab" onclick="showQueryTab('q-packages',this)">Pacotes</button>
+    <button class="query-tab" onclick="showQueryTab('q-versions',this)">Versions</button>
+    <button class="query-tab" onclick="showQueryTab('q-category',this)">Category</button>
+    <button class="query-tab" onclick="showQueryTab('q-reqfiles',this)">Files by Request</button>
+    <button class="query-tab" onclick="showQueryTab('q-reqdesc',this)">Request Desc</button>
+    <button class="query-tab" onclick="showQueryTab('q-readver',this)">Read Version</button>
+  </div>
+
+  <!-- Requests -->
+  <div id="q-requests" class="query-panel active">
+    <div class="card"><div class="flex-between">
+      <div class="card-title" style="margin:0">Buscar Requests</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary" onclick="queryRequests()">Buscar</button>
+        <button class="btn btn-outline" onclick="clearQueryResult('qr-requests')">Limpar</button>
+      </div>
+    </div></div>
+    <div id="qr-requests" class="query-result"></div>
+  </div>
+
+  <!-- Reports -->
+  <div id="q-reports" class="query-panel">
+    <div class="card"><div class="flex-between">
+      <div class="card-title" style="margin:0">Buscar Reports (All Files)</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary" onclick="queryReports()">Buscar</button>
+        <button class="btn btn-outline" onclick="clearQueryResult('qr-reports')">Limpar</button>
+      </div>
+    </div></div>
+    <div id="qr-reports" class="query-result"></div>
+  </div>
+
+  <!-- Packages -->
+  <div id="q-packages" class="query-panel">
+    <div class="card"><div class="flex-between">
+      <div class="card-title" style="margin:0">Buscar Pacotes</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-primary" onclick="queryPackages()">Buscar</button>
+        <button class="btn btn-outline" onclick="clearQueryResult('qr-packages')">Limpar</button>
+      </div>
+    </div></div>
+    <div id="qr-packages" class="query-result"></div>
+  </div>
+
+  <!-- Versions Metadata -->
+  <div id="q-versions" class="query-panel">
+    <div class="card">
+      <div class="card-title">Buscar Versions Metadata</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label>fileName</label><input id="qv-filename"/></div>
+        <div class="form-group"><label>category</label>
+          <select id="qv-category"><option>PROGRAM</option><option>FUNCTION_MODULE</option><option>CLASS</option></select>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px">
+          <button class="btn btn-primary" onclick="queryVersions()">Buscar</button>
+          <button class="btn btn-outline" onclick="clearQueryResult('qr-versions')">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-versions" class="query-result"></div>
+  </div>
+
+  <!-- File Category -->
+  <div id="q-category" class="query-panel">
+    <div class="card">
+      <div class="card-title">Buscar File Category</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label>fileName</label><input id="qc-filename"/></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px">
+          <button class="btn btn-primary" onclick="queryCategory()">Buscar</button>
+          <button class="btn btn-outline" onclick="clearQueryResult('qr-category')">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-category" class="query-result"></div>
+  </div>
+
+  <!-- Files by Request -->
+  <div id="q-reqfiles" class="query-panel">
+    <div class="card">
+      <div class="card-title">Buscar Arquivos por Request</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group" style="grid-column:1/3"><label>Requests (separadas por vírgula)</label><input id="qrf-requests" placeholder="DEVK900001, DEVK900002"/></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px">
+          <button class="btn btn-primary" onclick="queryRequestFiles()">Buscar</button>
+          <button class="btn btn-outline" onclick="clearQueryResult('qr-reqfiles')">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-reqfiles" class="query-result"></div>
+  </div>
+
+  <!-- Request Description -->
+  <div id="q-reqdesc" class="query-panel">
+    <div class="card">
+      <div class="card-title">Buscar Descrição da Request</div>
+      <div class="form-grid form-grid-3">
+        <div class="form-group"><label>Request ID</label><input id="qrd-requestid" placeholder="DEVK900123"/></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px">
+          <button class="btn btn-primary" onclick="queryRequestDesc()">Buscar</button>
+          <button class="btn btn-outline" onclick="clearQueryResult('qr-reqdesc')">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-reqdesc" class="query-result"></div>
+  </div>
+
+  <!-- Read From Version -->
+  <div id="q-readver" class="query-panel">
+    <div class="card">
+      <div class="card-title">Ler Conteúdo por Versão</div>
+      <div class="form-grid form-grid-4">
+        <div class="form-group"><label>fileName</label><input id="qrv-filename"/></div>
+        <div class="form-group"><label>category</label>
+          <select id="qrv-category"><option>PROGRAM</option><option>FUNCTION_MODULE</option><option>CLASS</option></select>
+        </div>
+        <div class="form-group"><label>versionId</label><input id="qrv-version"/></div>
+        <div style="display:flex;align-items:flex-end;gap:6px;padding-bottom:2px">
+          <button class="btn btn-primary" onclick="queryReadVersion()">Buscar</button>
+          <button class="btn btn-outline" onclick="clearQueryResult('qr-readver')">Limpar</button>
+        </div>
+      </div>
+    </div>
+    <div id="qr-readver" class="query-result"></div>
+  </div>
+</section>
+
+</div><!-- /content -->
+
+<!-- Log Panel -->
+<div id="log-panel"></div>
+
+<!-- Status Bar -->
+<div id="status-bar">
+  <span id="status-text">Pronto</span>
+  <button class="btn btn-outline" onclick="clearLog()" style="padding:4px 12px;font-size:9px">Limpar Log</button>
+</div>
+
+</div><!-- /main -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   JavaScript — Application Logic
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── State ──
+let selectedTableRow = null;
+let originalCode = null;
+let activeQueryTab = 'q-requests';
+
+// ── Navigation ──
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  const link = document.querySelector(`[data-page="${name}"]`);
+  if (page) page.classList.add('active');
+  if (link) link.classList.add('active');
+}
+
+function showQueryTab(id, btn) {
+  document.querySelectorAll('.query-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.query-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  activeQueryTab = id;
+}
+
+// ── Helpers ──
+function $(id) { return document.getElementById(id); }
+function val(id) { return $(id).value.trim(); }
+
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.textContent = msg;
+  $('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+function log(text, type='info') {
+  const el = document.createElement('div');
+  el.className = 'log-entry ' + type;
+  const ts = new Date().toLocaleTimeString('pt-BR');
+  el.textContent = `[${ts}] ${text}`;
+  $('log-panel').appendChild(el);
+  $('log-panel').scrollTop = $('log-panel').scrollHeight;
+}
+
+function clearLog() { $('log-panel').innerHTML = ''; }
+function setStatus(text) { $('status-text').textContent = text; }
+
+function clearQueryResult(id) { $(id).textContent = ''; }
+
+function updateGridInfo() {
+  const rows = $('tab-grid-body').querySelectorAll('tr');
+  let fields = rows.length, keys = 0;
+  rows.forEach(r => { if (JSON.parse(r.dataset.row).key === '1') keys++; });
+  $('tab-fields-count').textContent = 'FIELDS: ' + fields;
+  $('tab-keys-count').textContent = 'KEYS: ' + keys;
+}
+
+// ── Table Grid ──
+function selectRow(tr) {
+  $('tab-grid-body').querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+  tr.classList.add('selected');
+  selectedTableRow = tr;
+  const d = JSON.parse(tr.dataset.row);
+  $('tf-field').value = d.field || '';
+  $('tf-element').value = d.element_data || '';
+  $('tf-domain').value = d.domain_data || '';
+  $('tf-desc').value = d.desc || '';
+  $('tf-domtype').value = d.domtype || '';
+  $('tf-domlen').value = d.domlen || '';
+  $('tf-reftab').value = d.ref_table || '';
+  $('tf-reffield').value = d.ref_field || '';
+  $('tf-key').checked = d.key === '1';
+  $('tf-notnull').checked = d.notnull === '1';
+}
+
+function getFieldData() {
+  return {
+    field: val('tf-field').toUpperCase(),
+    key: $('tf-key').checked ? '1' : '0',
+    notnull: $('tf-notnull').checked ? '1' : '0',
+    element_data: val('tf-element').toUpperCase(),
+    domain_data: val('tf-domain').toUpperCase(),
+    desc: val('tf-desc'),
+    domtype: val('tf-domtype').toUpperCase(),
+    domlen: val('tf-domlen'),
+    ref_table: val('tf-reftab').toUpperCase(),
+    ref_field: val('tf-reffield').toUpperCase(),
+  };
+}
+
+function renderTableRow(d) {
+  const tr = document.createElement('tr');
+  tr.onclick = function() { selectRow(this); };
+  tr.dataset.row = JSON.stringify(d);
+  tr.innerHTML = `
+    <td class="mono">${d.field}</td>
+    <td class="center">${d.key==='1'?'✓':''}</td>
+    <td class="center">${d.notnull==='1'?'✓':''}</td>
+    <td class="muted">${d.element_data}</td>
+    <td class="muted">${d.domain_data}</td>
+    <td>${d.desc}</td>
+    <td class="muted">${d.domtype}</td>
+    <td>${d.domlen}</td>
+    <td>${d.ref_table||''}</td>
+    <td>${d.ref_field||''}</td>`;
+  return tr;
+}
+
+function addTableRow() {
+  const d = getFieldData();
+  if (!d.field || !d.element_data) return toast('Informe FIELD e ELEMENT.', 'error');
+  $('tab-grid-body').appendChild(renderTableRow(d));
+  updateGridInfo();
+}
+
+function updateTableRow() {
+  if (!selectedTableRow) return toast('Selecione um campo para atualizar.', 'error');
+  const d = getFieldData();
+  if (!d.field || !d.element_data) return toast('Informe FIELD e ELEMENT.', 'error');
+  const newTr = renderTableRow(d);
+  selectedTableRow.replaceWith(newTr);
+  selectedTableRow = newTr;
+  newTr.classList.add('selected');
+  updateGridInfo();
+}
+
+function removeTableRow() {
+  if (!selectedTableRow) return toast('Selecione um campo para remover.', 'error');
+  selectedTableRow.remove();
+  selectedTableRow = null;
+  updateGridInfo();
+}
+
+function collectTableFields() {
+  const rows = [];
+  $('tab-grid-body').querySelectorAll('tr').forEach(r => rows.push(JSON.parse(r.dataset.row)));
+  return rows;
+}
+
+// ── SE38 Flow ──
+function onFlowChange() {
+  const flow = val('se38-flow');
+  if (flow === 'FIX') {
+    $('btn-buscar').classList.remove('hidden');
+  } else {
+    $('btn-buscar').classList.add('hidden');
+    $('code-single').classList.remove('hidden');
+    $('code-comparison').classList.add('hidden');
+    originalCode = null;
+  }
+}
+
+function clearCode() {
+  $('se38-code').value = '';
+  $('se38-code-original').value = '';
+  $('se38-code-modified').value = '';
+  $('code-single').classList.remove('hidden');
+  $('code-comparison').classList.add('hidden');
+  originalCode = null;
+}
+
+// ── API Calls ──
+async function publishDomain() {
+  const n=val('dom-name'), t=val('dom-text'), dt=val('dom-datatype'), l=val('dom-length'), p=val('dom-package'), r=val('dom-request');
+  if (!n||!t||!dt||!l||!p||!r) return toast('Preencha todos os campos.','error');
+  setStatus('Enviando domínio...');
+  log('Enviando domínio ' + n + '...');
+  const res = await pywebview.api.publish_domain(n,t,dt,l,p,r);
+  if (res.success) { toast('Domínio enviado!','success'); setStatus('Enviado. Aguardando resposta...'); }
+  else { toast('Falha ao enviar: '+(res.error||''),'error'); setStatus('Falha ao enviar.'); }
+}
+
+async function publishElement() {
+  const n=val('elem-name'), t=val('elem-text'), d=val('elem-domain'), p=val('elem-package'), r=val('elem-request');
+  if (!n||!t||!d||!p||!r) return toast('Preencha todos os campos.','error');
+  setStatus('Enviando elemento...');
+  log('Enviando elemento ' + n + '...');
+  const res = await pywebview.api.publish_element(n,t,d,p,r);
+  if (res.success) { toast('Elemento enviado!','success'); setStatus('Enviado. Aguardando resposta...'); }
+  else { toast('Falha ao enviar: '+(res.error||''),'error'); setStatus('Falha ao enviar.'); }
+}
+
+async function publishTable() {
+  const name=val('tab-name'), text=val('tab-text'), pkg=val('tab-package'), req=val('tab-request');
+  const tabart=val('tab-tabart'), tabkat=val('tab-tabkat');
+  if (!name||!text||!pkg||!req) return toast('Preencha cabeçalho completo.','error');
+  const fields = collectTableFields();
+  if (fields.length < 1) return toast('Adicione pelo menos um campo.','error');
+  setStatus('Enviando tabela...');
+  log(`Enviando cadeia para tabela ${name.toUpperCase()}...`);
+  const res = await pywebview.api.publish_table(name,text,pkg,req,tabart,tabkat,fields);
+  if (res.success) { toast(`${res.count} mensagem(ns) enviada(s)!`,'success'); setStatus('Enviado. Aguardando respostas...'); }
+  else { toast('Falha: '+(res.error||''),'error'); setStatus('Falha ao enviar.'); }
+}
+
+async function generateTableAI() {
+  const prompt = val('tab-ai-prompt');
+  if (!prompt) return toast('Informe um prompt para a IA.','error');
+  $('btn-tab-ai').disabled = true;
+  setStatus('Aguardando IA...');
+  log('Enviando para IA...');
+  const state = { table_name: val('tab-name'), table_text: val('tab-text'), tabart: val('tab-tabart'), tabkat: val('tab-tabkat'), fields: collectTableFields() };
+  const res = await pywebview.api.generate_table_ai(prompt, state);
+  $('btn-tab-ai').disabled = false;
+  if (!res.success) { toast('Erro IA: '+(res.error||''),'error'); setStatus('Erro IA.'); return; }
+  const d = res.data;
+  if (d.table_name) $('tab-name').value = d.table_name.toUpperCase().substring(0,16);
+  if (d.table_text) $('tab-text').value = d.table_text.substring(0,60);
+  if (d.tabart) $('tab-tabart').value = d.tabart;
+  if (d.tabkat) $('tab-tabkat').value = d.tabkat;
+  if (d.fields && d.fields.length) {
+    $('tab-grid-body').innerHTML = '';
+    d.fields.forEach(f => {
+      const row = { field:(f.field||'').toUpperCase(), key:f.key||'0', notnull:f.notnull||'0',
+        element_data:(f.element_data||'').toUpperCase(), domain_data:(f.domain_data||'').toUpperCase(),
+        desc:f.desc||'', domtype:(f.domtype||'').toUpperCase(), domlen:f.domlen||'',
+        ref_table:(f.ref_table||'').toUpperCase(), ref_field:(f.ref_field||'').toUpperCase() };
+      $('tab-grid-body').appendChild(renderTableRow(row));
+    });
+    updateGridInfo();
+  }
+  toast('Proposta gerada! Revise antes de enviar.','success');
+  setStatus('IA respondeu.');
+}
+
+async function publishProgram() {
+  const name=val('se38-name'), flow=val('se38-flow');
+  if (!name) return toast('Informe o nome do programa.','error');
+  if (!name.toUpperCase().startsWith('Z') && !name.toUpperCase().startsWith('Y')) return toast('Nome deve começar com Z ou Y.','error');
+
+  if (flow === 'FIX') {
+    // Get code from modified panel or single panel
+    let code = $('code-comparison').classList.contains('hidden') ? val('se38-code') : val('se38-code-modified');
+    if (!code) return toast('Código vazio.','error');
+    setStatus('Enviando edição via V1...');
+    log('Enviando edição de ' + name.toUpperCase() + '...');
+    const res = await pywebview.api.publish_fix(name, code);
+    if (res.success) { toast('Edição enviada!','success'); setStatus('Enviado. Aguardando resposta...'); }
+    else { toast('Falha: '+(res.error||''),'error'); setStatus('Falha.'); }
+    return;
+  }
+
+  const title=val('se38-title'), ptype=val('se38-type'), pkg=val('se38-package'), req=val('se38-request'), code=val('se38-code');
+  if (!title) return toast('Informe o título.','error');
+  if (!pkg) return toast('Informe o pacote.','error');
+  setStatus('Enviando programa...');
+  log('Enviando programa ' + name.toUpperCase() + '...');
+  const res = await pywebview.api.publish_program(name,title,ptype,pkg,req,flow,code);
+  if (res.success) { toast('Programa enviado!','success'); setStatus('Enviado. Aguardando resposta...'); }
+  else { toast('Falha: '+(res.error||''),'error'); setStatus('Falha.'); }
+}
+
+async function buscarPrograma() {
+  const name = val('se38-name');
+  if (!name) return toast('Informe o nome do programa.','error');
+  setStatus('Buscando programa...');
+  log('Buscando código de ' + name.toUpperCase() + '...');
+  const res = await pywebview.api.read_program(name);
+  if (res.success) { setStatus('Requisição enviada. Aguardando resposta do SAP...'); }
+  else { toast('Falha: '+(res.error||''),'error'); setStatus('Falha.'); }
+}
+
+async function generateProgramAI() {
+  const prompt = val('se38-ai-prompt');
+  if (!prompt) return toast('Informe um prompt.','error');
+  $('btn-se38-ai').disabled = true;
+  setStatus('Aguardando IA...');
+  log('Enviando para IA (SE38)...');
+  const state = { program_name: val('se38-name'), title: val('se38-title'), type: val('se38-type'),
+    package: val('se38-package'), flow: val('se38-flow'), source_code: val('se38-code') };
+  const res = await pywebview.api.generate_program_ai(prompt, state);
+  $('btn-se38-ai').disabled = false;
+  if (!res.success) { toast('Erro IA: '+(res.error||''),'error'); setStatus('Erro IA.'); return; }
+  const d = res.data;
+  if (d.program_name) $('se38-name').value = d.program_name.toUpperCase();
+  if (d.title) $('se38-title').value = d.title;
+  if (d.type) $('se38-type').value = d.type;
+  if (d.package) $('se38-package').value = d.package;
+  if (d.source_code) {
+    const code = d.source_code.replace(/\\n/g, '\n');
+    const flow = val('se38-flow');
+    if (flow === 'FIX' && originalCode) {
+      $('code-single').classList.add('hidden');
+      $('code-comparison').classList.remove('hidden');
+      $('se38-code-original').value = originalCode;
+      $('se38-code-modified').value = code;
+      log('Tela dividida: Original vs IA.');
+    } else {
+      $('se38-code').value = code;
+    }
+  }
+  toast('Proposta gerada! Revise.','success');
+  setStatus('IA respondeu.');
+}
+
+// ── Queries ──
+async function queryRequests() { setStatus('Buscando requests...'); log('query.requests.v1...'); await pywebview.api.query_requests(); }
+async function queryReports() { setStatus('Buscando reports...'); log('query.all.files.v1...'); await pywebview.api.query_reports(); }
+async function queryPackages() { setStatus('Buscando pacotes...'); log('query.all.packages.v1...'); await pywebview.api.query_packages(); }
+async function queryVersions() {
+  const fn=val('qv-filename'); if(!fn) return toast('Informe fileName.','error');
+  setStatus('Buscando versões...'); log('query.versions.metadata.v1 | '+fn);
+  await pywebview.api.query_versions_metadata(fn, val('qv-category'));
+}
+async function queryCategory() {
+  const fn=val('qc-filename'); if(!fn) return toast('Informe fileName.','error');
+  setStatus('Buscando categoria...'); log('query.file.category.v1 | '+fn);
+  await pywebview.api.query_file_category(fn);
+}
+async function queryRequestFiles() {
+  const r=val('qrf-requests'); if(!r) return toast('Informe requests.','error');
+  setStatus('Buscando arquivos...'); log('query.request.files.v1 | '+r);
+  await pywebview.api.query_request_files(r);
+}
+async function queryRequestDesc() {
+  const r=val('qrd-requestid'); if(!r) return toast('Informe Request ID.','error');
+  setStatus('Buscando descrição...'); log('query.request.description.v1 | '+r);
+  await pywebview.api.query_request_description(r);
+}
+async function queryReadVersion() {
+  const fn=val('qrv-filename'), v=val('qrv-version'); if(!fn||!v) return toast('Informe fileName e versionId.','error');
+  setStatus('Buscando conteúdo...'); log('query.read.from.version.v1 | '+fn+' v'+v);
+  await pywebview.api.query_read_from_version(fn, val('qrv-category'), v);
+}
+
+// ── Response Handler (called from Python) ──
+const queryResultMap = {
+  'q-requests': 'qr-requests', 'q-reports': 'qr-reports', 'q-packages': 'qr-packages',
+  'q-versions': 'qr-versions', 'q-category': 'qr-category', 'q-reqfiles': 'qr-reqfiles',
+  'q-reqdesc': 'qr-reqdesc', 'q-readver': 'qr-readver',
+};
+
+window.handleResponse = function(response) {
+  // Query response: list
+  if (Array.isArray(response)) {
+    const panelId = queryResultMap[activeQueryTab];
+    if (panelId) $(panelId).textContent = JSON.stringify(response, null, 2);
+    setStatus('Query concluída: ' + response.length + ' resultado(s)');
+    log('Query concluída: ' + response.length + ' resultado(s)', 'success');
+    return;
+  }
+
+  // Query response: string
+  if (typeof response === 'string') {
+    const panelId = queryResultMap[activeQueryTab];
+    if (panelId) $(panelId).textContent = response;
+    setStatus('Query concluída.');
+    log('Query concluída.', 'success');
+    return;
+  }
+
+  // V1 Fix/Create response: {hasError, errorMessage}
+  if ('hasError' in response && 'isCodeError' in response) {
+    if (response.hasError) {
+      const msg = response.errorMessage || 'Erro desconhecido';
+      log('[ERRO] ' + msg, 'error');
+      toast(msg, 'error');
+      setStatus('Erro ao executar comando SAP.');
+    } else {
+      log('[OK] Comando executado com sucesso no SAP.', 'success');
+      toast('Comando executado com sucesso!', 'success');
+      setStatus('Concluído com sucesso.');
+    }
+    return;
+  }
+
+  // Read file response: {content, fileName}
+  if ('content' in response && 'fileName' in response) {
+    const code = (response.content || '').replace(/\\n/g, '\n');
+    originalCode = code;
+    $('se38-code').value = code;
+    $('code-single').classList.remove('hidden');
+    $('code-comparison').classList.add('hidden');
+    log('Código carregado do SAP: ' + response.fileName, 'success');
+    setStatus('Código carregado.');
+    toast('Código carregado. Use IA para gerar versão modificada.', 'info');
+    showPage('se38');
+    return;
+  }
+
+  // Read file error
+  if ('error' in response) {
+    log('[ERRO] ' + response.error, 'error');
+    toast(response.error, 'error');
+    setStatus('Erro.');
+    return;
+  }
+
+  // Legacy response
+  if ('action' in response) {
+    const status = response.status || '?';
+    const msg = response.message || '';
+    const obj = response.object_name || '?';
+    const icon = status === 'sucesso' ? '[OK]' : status === 'erro' ? '[ERRO]' : '[!!]';
+    const type = status === 'sucesso' ? 'success' : status === 'erro' ? 'error' : 'info';
+    log(`${icon} ${response.action} | ${obj} | ${msg}`, type);
+
+    if (response.action === 'buscar_programa' && status === 'sucesso') {
+      const code = msg.replace(/\\n/g, '\n');
+      originalCode = code;
+      $('se38-code').value = code;
+      showPage('se38');
+    }
+    return;
+  }
+};
+
+// ── Init ──
+window.addEventListener('pywebviewready', async () => {
+  try {
+    const cfg = await pywebview.api.get_config();
+    if (cfg.defaultPackage) {
+      $('dom-package').value = cfg.defaultPackage;
+      $('elem-package').value = cfg.defaultPackage;
+      $('tab-package').value = cfg.defaultPackage;
+      $('se38-package').value = cfg.defaultPackage;
+    }
+    if (cfg.defaultRequest) {
+      $('dom-request').value = cfg.defaultRequest;
+      $('elem-request').value = cfg.defaultRequest;
+      $('tab-request').value = cfg.defaultRequest;
+      $('se38-request').value = cfg.defaultRequest;
+    }
+    log('Conectado ao backend.', 'success');
+  } catch(e) {
+    log('Erro ao inicializar: ' + e, 'error');
+  }
+});
+</script>
+</body>
+</html>
