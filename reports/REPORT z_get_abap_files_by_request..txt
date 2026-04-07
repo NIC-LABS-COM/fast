@@ -1,4 +1,4 @@
-REPORT z_get_abap_files_by_request.
+REPORT z_get_files_by_request.
 
 ************************************************************************
 * Seleção
@@ -53,7 +53,8 @@ TYPES tt_e071_obj  TYPE STANDARD TABLE OF ty_e071_obj  WITH DEFAULT KEY.
 CLASS lcx_app DEFINITION INHERITING FROM cx_static_check.
   PUBLIC SECTION.
     DATA mv_text TYPE string.
-    METHODS constructor IMPORTING iv_text TYPE string.
+    METHODS constructor
+      IMPORTING iv_text TYPE string.
 ENDCLASS.
 
 CLASS lcx_app IMPLEMENTATION.
@@ -94,9 +95,11 @@ CLASS lcl_service IMPLEMENTATION.
           ls_result     TYPE ty_result,
           lv_category   TYPE string,
           lv_task_json  TYPE string,
+          lv_first      TYPE c,
           lo_exc        TYPE REF TO lcx_app.
 
     CLEAR rt_result.
+    CLEAR lv_found.
 
 *--------------------------------------------------------------------*
 * 1) Buscar tasks das requests
@@ -146,56 +149,56 @@ CLASS lcl_service IMPLEMENTATION.
     ENDIF.
 
 *--------------------------------------------------------------------*
-* 3) Montar saída agrupada por file/category
+* 3) Montar saída agrupada por file/category e filtrar Z/Y requests
 *--------------------------------------------------------------------*
     LOOP AT lt_objects INTO ls_object.
 
-      IF ls_object-obj_name IS INITIAL.
-        CONTINUE.
-      ENDIF.
+      " Verificar se o objeto começa com Z ou Y
+      IF ( ls_object-obj_name CP 'Z*' OR ls_object-obj_name CP 'Y*' ) AND
+         ( ls_object-object IN ['PROG', 'CLAS', 'FUNC', 'FUGR', 'INTF', 'TABL', 'DDLS', 'INCL', 'DOMA', 'DTEL', 'ENHO', 'INDX'] ).
 
-      lv_category = lcl_service=>normalize_category( ls_object-object ).
+        lv_category = lcl_service=>normalize_category( ls_object-object ).
 
-      CLEAR ls_result.
-      READ TABLE rt_result INTO ls_result
-        WITH KEY file_name = ls_object-obj_name
-                 category  = lv_category.
-
-      IF sy-subrc <> 0.
         CLEAR ls_result.
-        ls_result-file_name  = ls_object-obj_name.
-        ls_result-category   = lv_category.
-        ls_result-tasks_json = ''.
-      ENDIF.
+        READ TABLE rt_result INTO ls_result
+          WITH KEY file_name = ls_object-obj_name
+                   category  = lv_category.
 
-*--------------------------------------------------------------------*
-* descobrir taskType na E070
-*--------------------------------------------------------------------*
-      CLEAR ls_task.
-      SELECT SINGLE trkorr trfunction strkorr
-        INTO ls_task
-        FROM e070
-        WHERE trkorr = ls_object-trkorr.
-
-      CLEAR lv_task_json.
-      CONCATENATE '{"taskId":"' ls_object-trkorr '","taskType":"' ls_task-trfunction '"}'
-             INTO lv_task_json.
-
-      IF ls_result-tasks_json IS INITIAL.
-        ls_result-tasks_json = lv_task_json.
-      ELSE.
-        IF ls_result-tasks_json CS lv_task_json.
-        ELSE.
-          CONCATENATE ls_result-tasks_json ',' lv_task_json
-                 INTO ls_result-tasks_json.
+        IF sy-subrc <> 0.
+          CLEAR ls_result.
+          ls_result-file_name  = ls_object-obj_name.
+          ls_result-category   = lv_category.
+          ls_result-tasks_json = ''.
         ENDIF.
-      ENDIF.
 
-      DELETE rt_result WHERE file_name = ls_object-obj_name
-                        AND category  = lv_category.
+   *--------------------------------------------------------------------*
+    * descobrir taskType na E070
+   *--------------------------------------------------------------------*
+        CLEAR ls_task.
+        SELECT SINGLE trkorr trfunction strkorr
+          INTO ls_task
+          FROM e070
+          WHERE trkorr = ls_object-trkorr.
 
-      APPEND ls_result TO rt_result.
+        CLEAR lv_task_json.
+        CONCATENATE '{"taskId":"' ls_object-trkorr '","taskType":"' ls_task-trfunction '"}'
+                   INTO lv_task_json.
 
+        IF ls_result-tasks_json IS INITIAL.
+          ls_result-tasks_json = lv_task_json.
+        ELSE.
+          IF ls_result-tasks_json CS lv_task_json.
+          ELSE.
+            CONCATENATE ls_result-tasks_json ',' lv_task_json
+                   INTO ls_result-tasks_json.
+          ENDIF.
+        ENDIF.
+
+        DELETE rt_result WHERE file_name = ls_object-obj_name
+                          AND category  = lv_category.
+
+        APPEND ls_result TO rt_result.
+      ENDIF. "FIM DO IF
     ENDLOOP.
 
     IF rt_result IS INITIAL.
