@@ -1,0 +1,36 @@
+REPORT Z_DOWNLOAD_ARQUIVO.
+
+PARAMETERS: P_PROG TYPE SYREPID OBLIGATORY.
+
+DATA: lt_source TYPE TABLE OF string,
+      lv_prog   TYPE string,
+      lv_fullpath TYPE string.
+
+START-OF-SELECTION.
+
+  READ REPORT p_prog INTO lt_source.
+
+  IF sy-subrc <> 0.
+    MESSAGE |Programa { p_prog } não encontrado.| TYPE 'E'.
+  ENDIF.
+
+  lv_prog = p_prog.
+  CONDENSE lv_prog NO-GAPS.
+
+  CONCATENATE 'C:\Temp\' lv_prog '.txt' INTO lv_fullpath.
+  translate LV_FULLPATH TO LOWER CASE.
+
+  cl_gui_frontend_services=>gui_download(
+    EXPORTING
+      filename = LV_FULLPATH
+      filetype = 'ASC'
+    CHANGING
+      data_tab = LT_SOURCE
+    EXCEPTIONS
+      others   = 1 ).
+
+  IF sy-subrc = 0.
+    MESSAGE |Codigo { p_prog } baixado em { LV_FULLPATH }.| TYPE 'S'.
+  ELSE.
+    MESSAGE 'Erro ao fazer o download.' TYPE 'E'.
+  ENDIF.
