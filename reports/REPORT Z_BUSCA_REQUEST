@@ -65,7 +65,7 @@ START-OF-SELECTION.
     IF ls_request-description IS INITIAL.
       lv_line = ls_request-request.
     ELSE.
-      lv_line = |{ ls_request-request } : { ls_request-description }|.
+      lv_line = |{ ls_request-request };{ ls_request-description }|.
     ENDIF.
     APPEND lv_line TO lt_output.
   ENDLOOP.
