@@ -1,8 +1,5 @@
-REPORT z_get_files_by_request.
+REPORT z_get_abap_files_by_request.
 
-************************************************************************
-* Declaração de Variáveis
-************************************************************************
 TYPES: BEGIN OF ty_range,
          sign     TYPE char1,  " S (incluir) ou E (excluir)
          option   TYPE char2,  " EQ, CP, BT, ...
@@ -10,24 +7,24 @@ TYPES: BEGIN OF ty_range,
          high     TYPE string,  " Valor superior
        END OF ty_range.
 
-DATA: lt_range TYPE RANGE OF string.  " Tabela de intervalo para categorias válidas
+TYPES: TT_E070_TASK TYPE STANDARD TABLE OF e070-trkorr WITH DEFAULT KEY.  " Definindo a tabela de tarefas E070
 
-DATA: lt_tasks      TYPE tt_e070_task,
-      lt_objects    TYPE tt_e071_obj,
+DATA: lt_range TYPE RANGE OF string,  " Tabela de intervalo para categorias válidas
+      lt_tasks TYPE TT_E070_TASK,    " Definindo a tabela de tarefas
+      lt_objects TYPE tt_e071_obj,
       lt_all_trkorr TYPE STANDARD TABLE OF e070-trkorr WITH DEFAULT KEY,
-      ls_req        LIKE LINE OF p_req,
-      ls_task       TYPE ty_e070_task,
-      ls_object     TYPE ty_e071_obj,
-      ls_result     TYPE ty_result,
-      lv_category   TYPE string,
-      lv_task_json  TYPE string,
-      lv_first      TYPE c,
-      lo_exc        TYPE REF TO lcx_app.
+      ls_req LIKE LINE OF p_req,
+      ls_task TYPE ty_e070_task,
+      ls_object TYPE ty_e071_obj,
+      ls_result TYPE ty_result,
+      lv_category TYPE string,
+      lv_task_json TYPE string,
+      lv_first TYPE c,
+      lo_exc TYPE REF TO lcx_app.
 
 ************************************************************************
 * Inicialização do Intervalo de Categorias
 ************************************************************************
-" Preenchendo o intervalo com as categorias válidas
 DATA: ls_range TYPE ty_range.
 
 CLEAR: ls_range.
