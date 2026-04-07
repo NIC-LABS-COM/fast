@@ -114,6 +114,30 @@ session.findById("wnd[0]/usr/radRSRD1-TBMA").select
 
 session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").text = tableName
 session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").caretPosition = Len(tableName)
+
+' --- Verifica se tabela ja existe (tenta Display) ---
+session.findById("wnd[0]/usr/btnPUSHSHOW").press
+WScript.Sleep 800
+
+Dim tblExists
+tblExists = False
+On Error Resume Next
+Dim testTblField
+testTblField = session.findById("wnd[0]/usr/txtDD02D-DDTEXT").text
+If Err.Number = 0 Then tblExists = True
+Err.Clear
+On Error GoTo 0
+
+If tblExists Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
+    WScript.Echo "Tabela " & tableName & " ja existe. Ignorando."
+    WScript.Quit 0
+End If
+
+' Tabela nao existe — criar
+session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").text = tableName
+session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").caretPosition = Len(tableName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
 
 On Error Resume Next
@@ -310,8 +334,39 @@ session.findById("wnd[0]/tbar[0]/btn[11]").press
 WScript.Sleep 1000
 CheckSapError "Salvar configuracoes tecnicas"
 session.findById("wnd[0]/tbar[0]/btn[3]").press
+WScript.Sleep 500
 
-WScript.Echo "Tabela " & tableName & " criada com sucesso."
+' --- Reativa a tabela apos configuracoes tecnicas ---
+session.findById("wnd[0]/tbar[0]/okcd").Text = "/nse11"
+session.findById("wnd[0]").sendVKey 0
+WScript.Sleep 500
+
+session.findById("wnd[0]/usr/radRSRD1-TBMA").setFocus
+session.findById("wnd[0]/usr/radRSRD1-TBMA").select
+session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").text = tableName
+session.findById("wnd[0]/usr/ctxtRSRD1-TBMA_VAL").caretPosition = Len(tableName)
+session.findById("wnd[0]/usr/btnPUSHCHG").press
+WScript.Sleep 1000
+
+On Error Resume Next
+session.findById("wnd[1]").sendVKey 0
+Err.Clear
+On Error GoTo 0
+WScript.Sleep 300
+
+session.findById("wnd[0]/tbar[1]/btn[27]").press
+WScript.Sleep 2000
+
+On Error Resume Next
+session.findById("wnd[1]").sendVKey 0
+Err.Clear
+On Error GoTo 0
+WScript.Sleep 1000
+
+CheckActivationPopup "Ativar tabela final " & tableName
+CheckSapError "Ativar tabela final " & tableName
+
+WScript.Echo "Tabela " & tableName & " criada e ativada com sucesso."
 
 ' ---- Sub para verificar erro na status bar do SAP ----
 Sub CheckSapError(stepName)

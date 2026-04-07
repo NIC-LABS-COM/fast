@@ -449,12 +449,24 @@ def callback_v1(ch, method, properties, body):
 
     try:
         payload = json.loads(body_str)
-    except json.JSONDecodeError as e:
-        log(f"JSON invalido no evento V1: {e}")
-        return
+    except json.JSONDecodeError:
+        # Body nao e JSON valido — trata como string pura
+        log(f"[V1] Body nao e JSON, tratando como string pura: {body_str[:100]}")
+        payload = body_str.strip()
 
+    # Cliente pode enviar valor direto no body (string ou lista) em vez de objeto.
+    # Normaliza para dict de acordo com o comando.
     if not isinstance(payload, dict):
+        raw = payload
         payload = {}
+        if command == "query.request.description.v1" and isinstance(raw, str):
+            payload["requestId"] = raw
+        elif command == "query.request.files.v1" and isinstance(raw, list):
+            payload["requests"] = raw
+        elif command == "query.request.files.v1" and isinstance(raw, str):
+            payload["requests"] = [raw]
+        elif isinstance(raw, str):
+            payload["requestId"] = raw
 
     # Ignora mensagens que sao respostas (evita self-consumption loop)
     if "hasError" in payload and "isCodeError" in payload:

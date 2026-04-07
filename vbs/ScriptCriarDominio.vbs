@@ -72,6 +72,30 @@ session.findById("wnd[0]/usr/radRSRD1-DOMA").setFocus
 session.findById("wnd[0]/usr/radRSRD1-DOMA").select
 session.findById("wnd[0]/usr/ctxtRSRD1-DOMA_VAL").text = domainName
 session.findById("wnd[0]/usr/ctxtRSRD1-DOMA_VAL").caretPosition = Len(domainName)
+
+' --- Verifica se dominio ja existe (tenta Display) ---
+session.findById("wnd[0]/usr/btnPUSHSHOW").press
+WScript.Sleep 800
+
+Dim domExists
+domExists = False
+On Error Resume Next
+Dim testDomField
+testDomField = session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpTAB1/ssubTS_SCREEN:SAPLSD11:1201/txtDD01D-LENG").text
+If Err.Number = 0 Then domExists = True
+Err.Clear
+On Error GoTo 0
+
+If domExists Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
+    WScript.Echo "Dominio " & domainName & " ja existe. Ignorando."
+    WScript.Quit 0
+End If
+
+' Dominio nao existe — criar
+session.findById("wnd[0]/usr/ctxtRSRD1-DOMA_VAL").text = domainName
+session.findById("wnd[0]/usr/ctxtRSRD1-DOMA_VAL").caretPosition = Len(domainName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
 WScript.Sleep 1000
 session.findById("wnd[0]/usr/tabsTAB_STRIP/tabpTAB1/ssubTS_SCREEN:SAPLSD11:1201/txtDD01D-LENG").text = dataLength

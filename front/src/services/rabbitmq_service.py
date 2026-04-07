@@ -87,6 +87,131 @@ class RabbitMQService:
             fail_count = len(messages) - ok_count
         return ok_count, fail_count
 
+    def publish_chain(
+        self,
+        messages: List[Dict],
+        timeout: float = 120.0,
+        on_step: Callable[[int, int, Dict], None] | None = None,
+    ) -> List[Dict]:
+        """
+        Publica mensagens sequencialmente, esperando a resposta de cada uma
+        antes de enviar a proxima. Para imediatamente se houver erro real.
+
+        Args:
+            messages: lista de payloads (formato legado com correlationId).
+            timeout: tempo maximo (s) de espera por cada resposta.
+            on_step: callback opcional (step_index, total, response) a cada resposta.
+
+        Returns:
+            Lista de respostas recebidas (uma por mensagem processada).
+        """
+        responses: List[Dict] = []
+        total = len(messages)
+
+        try:
+            conn = self._get_connection()
+            ch = conn.channel()
+            ch.queue_declare(queue=QUEUE_COMMANDS, durable=True)
+            ch.queue_declare(queue=QUEUE_RESPONSES, durable=True)
+        except Exception:
+            logger.error(f"Erro de conexao no chain: {traceback.format_exc()}")
+            return responses
+
+        for idx, msg in enumerate(messages):
+            correlation_id = msg.get("correlationId", "")
+            action = msg.get("action", "?")
+            obj_name = msg.get("args", ["?"])[0] if msg.get("args") else "?"
+
+            # Publica a mensagem
+            try:
+                body = json.dumps(msg, ensure_ascii=False)
+                ch.basic_publish(
+                    exchange="",
+                    routing_key=QUEUE_COMMANDS,
+                    body=body.encode("utf-8"),
+                    properties=pika.BasicProperties(delivery_mode=2),
+                )
+                logger.info(f"[CHAIN {idx+1}/{total}] Publicado: {action} | {obj_name}")
+            except Exception:
+                logger.error(f"[CHAIN] Erro ao publicar msg {idx+1}: {traceback.format_exc()}")
+                responses.append({
+                    "correlationId": correlation_id,
+                    "action": action,
+                    "object_name": obj_name,
+                    "status": "erro",
+                    "message": "Falha ao publicar mensagem.",
+                })
+                break
+
+            # Espera resposta com correlationId correspondente
+            response = self._wait_for_response(ch, correlation_id, timeout)
+            if response is None:
+                response = {
+                    "correlationId": correlation_id,
+                    "action": action,
+                    "object_name": obj_name,
+                    "status": "erro",
+                    "message": f"Timeout ({timeout}s) esperando resposta do consumer.",
+                }
+
+            responses.append(response)
+            if on_step:
+                try:
+                    on_step(idx, total, response)
+                except Exception:
+                    pass
+
+            # Se erro real, aborta a cadeia
+            status = response.get("status", "")
+            if status == "erro":
+                logger.warning(
+                    f"[CHAIN] Erro em {action} | {obj_name}: {response.get('message', '')}. "
+                    f"Abortando cadeia ({idx+1}/{total})."
+                )
+                break
+
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+        return responses
+
+    def _wait_for_response(
+        self, channel, correlation_id: str, timeout: float
+    ) -> Dict | None:
+        """Consome mensagens da fila de respostas ate encontrar a com o correlationId."""
+        import time as _time
+
+        deadline = _time.monotonic() + timeout
+
+        while _time.monotonic() < deadline:
+            remaining = max(0.1, deadline - _time.monotonic())
+            method, properties, body = (None, None, None)
+            try:
+                method, properties, body = channel.basic_get(
+                    queue=QUEUE_RESPONSES, auto_ack=True
+                )
+            except Exception:
+                logger.error(f"Erro ao consumir resposta: {traceback.format_exc()}")
+                return None
+
+            if method is None:
+                _time.sleep(0.5)
+                continue
+
+            body_str = body.decode("utf-8") if body else ""
+            try:
+                resp = json.loads(body_str)
+            except Exception:
+                continue
+
+            if isinstance(resp, dict) and resp.get("correlationId") == correlation_id:
+                return resp
+            # Resposta de outro correlationId — descarta (pertence a outra operacao)
+
+        return None
+
     def publish_v1(self, routing_key: str, payload: Dict) -> bool:
         """
         Publica mensagem usando arquitetura V1 com exchange topic.

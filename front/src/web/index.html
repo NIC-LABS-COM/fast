@@ -747,10 +747,21 @@ async function publishTable() {
   const fields = collectTableFields();
   if (fields.length < 1) return toast('Adicione pelo menos um campo.','error');
   setStatus('Enviando tabela...');
-  log(`Enviando cadeia para tabela ${name.toUpperCase()}...`);
+  log(`Enviando cadeia sequencial para tabela ${name.toUpperCase()}...`);
   const res = await pywebview.api.publish_table(name,text,pkg,req,tabart,tabkat,fields);
-  if (res.success) { toast(`${res.count} mensagem(ns) enviada(s)!`,'success'); setStatus('Enviado. Aguardando respostas...'); }
-  else { toast('Falha: '+(res.error||''),'error'); setStatus('Falha ao enviar.'); }
+  if (res.success) {
+    toast(`${res.count} etapa(s) concluida(s) com sucesso!`,'success');
+    setStatus('Tabela criada com sucesso.');
+  } else if (res.errors && res.errors.length) {
+    const errDetail = res.errors.map(e=>`${e.action} | ${e.object}: ${e.message}`).join('\n');
+    toast('Erro na cadeia de criação','error');
+    log(`Erro: ${errDetail}`);
+    const skipped = res.skipped || 0;
+    setStatus(`Erro: ${res.failed} falha(s), ${skipped} etapa(s) cancelada(s).`);
+  } else {
+    toast('Falha: '+(res.error||''),'error');
+    setStatus('Falha ao enviar.');
+  }
 }
 
 async function generateTableAI() {

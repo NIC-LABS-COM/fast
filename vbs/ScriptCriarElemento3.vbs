@@ -80,6 +80,30 @@ WScript.Sleep 500
 
 session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").text = elementName
 session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").caretPosition = Len(elementName)
+
+' --- Verifica se elemento ja existe (tenta Display) ---
+session.findById("wnd[0]/usr/btnPUSHSHOW").press
+WScript.Sleep 800
+
+Dim elemExists
+elemExists = False
+On Error Resume Next
+Dim testElemField
+testElemField = session.findById("wnd[0]/usr/txtDD04D-DDTEXT").text
+If Err.Number = 0 Then elemExists = True
+Err.Clear
+On Error GoTo 0
+
+If elemExists Then
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]").sendVKey 0
+    WScript.Echo "Elemento " & elementName & " ja existe. Ignorando."
+    WScript.Quit 0
+End If
+
+' Elemento nao existe — criar
+session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").text = elementName
+session.findById("wnd[0]/usr/ctxtRSRD1-DDTYPE_VAL").caretPosition = Len(elementName)
 session.findById("wnd[0]/usr/btnPUSHADD").press
 WScript.Sleep 1000
 

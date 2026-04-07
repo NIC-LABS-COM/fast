@@ -3,6 +3,7 @@ Janela principal da aplicacao.
 Orquestra servicos, abas e o painel de log.
 """
 import logging
+import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 from typing import Callable, Dict, List
@@ -175,12 +176,14 @@ class SapPublisherApp:
         self._pending.clear()
         self._responses.clear()
 
+        total = len(messages)
+
         # Feedback imediato antes da conexao bloqueante
-        self._set_status(f"Conectando e enviando {len(messages)} mensagem(ns)...")
-        self._log_panel.append(f"Conectando ao RabbitMQ...")
+        self._set_status(f"Conectando e enviando {total} mensagem(ns) sequencialmente...")
+        self._log_panel.append(f"Conectando ao RabbitMQ... ({total} etapas)")
         self.root.update_idletasks()
 
-        if len(messages) == 1:
+        if total == 1:
             ok = self._rabbitmq.publish(messages[0])
             if ok:
                 self._pending[messages[0]["correlationId"]] = messages[0]
@@ -191,16 +194,59 @@ class SapPublisherApp:
             else:
                 self._set_status("Falha ao enviar")
                 messagebox.showerror("Erro", "Falha ao enviar para fila.")
+            return
+
+        # Multiplas mensagens: executa cadeia sequencial em thread separada
+        def _chain_worker():
+            def on_step(idx, total, response):
+                action = response.get("action", "?")
+                obj = response.get("object_name", "?")
+                status = response.get("status", "?")
+                icon = STATUS_ICONS.get(status, "[?]")
+                self.root.after(0, self._log_panel.append,
+                    f"{icon} [{idx+1}/{total}] {action} | {obj} | {response.get('message', '')}", status)
+                self.root.after(0, self._set_status,
+                    f"Processando etapa {idx+1}/{total}: {action} | {obj} → {status}")
+
+            responses = self._rabbitmq.publish_chain(
+                messages, timeout=120.0, on_step=on_step,
+            )
+            self.root.after(0, self._handle_chain_complete, messages, responses)
+
+        thread = threading.Thread(target=_chain_worker, daemon=True)
+        thread.start()
+
+    def _handle_chain_complete(self, messages: List[Dict], responses: List[Dict]) -> None:
+        """Exibe resumo final apos cadeia sequencial terminar."""
+        total = len(messages)
+        processed = len(responses)
+        ok = sum(1 for r in responses if r.get("status") == "sucesso")
+        exists = sum(1 for r in responses if r.get("status") == "ja_existe")
+        errs = sum(1 for r in responses if r.get("status") == "erro")
+        skipped = total - processed
+
+        summary = (
+            f"Resumo do processamento ({total} etapa(s)):\n\n"
+            f"  Sucesso: {ok}\n  Ja existia: {exists}\n  Erro: {errs}\n"
+        )
+        if skipped > 0:
+            summary += f"  Nao executadas (abortadas): {skipped}\n"
+        summary += "\n"
+
+        if errs > 0:
+            summary += "Detalhes dos erros:\n"
+            for r in responses:
+                if r.get("status") == "erro":
+                    summary += f"  - {r.get('action')} | {r.get('object_name')}: {r.get('message', '')}\n"
+            if skipped > 0:
+                summary += f"\n{skipped} etapa(s) subsequente(s) foram canceladas.\n"
+
+        self._set_status(f"Concluido: {ok} ok, {exists} ja existiam, {errs} erro(s), {skipped} canceladas")
+
+        if errs > 0:
+            messagebox.showwarning("Concluido com erros", summary)
         else:
-            ok, fail = self._rabbitmq.publish_batch(messages)
-            for msg in messages[:ok]:
-                self._pending[msg["correlationId"]] = msg
-            if fail > 0:
-                self._set_status(f"Enviado com falhas: {ok} ok, {fail} falha(s)")
-                self._log_panel.append(f"Enviado: {ok} ok, {fail} falha(s)", "erro")
-            else:
-                self._set_status(f"Todas {ok} enviadas. Aguardando respostas...")
-                self._log_panel.append(f"Todas {ok} mensagens enviadas. Aguardando consumer...")
+            messagebox.showinfo("Concluido", summary)
 
     def _on_publish_v1(self, v1_data: Dict) -> None:
         """Publica mensagem V1 usando exchange topic."""

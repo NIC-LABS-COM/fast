@@ -95,8 +95,23 @@ class Api:
             if len(messages) == 1:
                 ok = self._rabbitmq.publish(messages[0])
                 return {"success": ok, "count": 1}
-            ok_count, fail_count = self._rabbitmq.publish_batch(messages)
-            return {"success": fail_count == 0, "count": ok_count, "failed": fail_count}
+            responses = self._rabbitmq.publish_chain(messages, timeout=120.0)
+            ok_count = sum(1 for r in responses if r.get("status") in ("sucesso", "ja_existe"))
+            err_count = sum(1 for r in responses if r.get("status") == "erro")
+            errors = [
+                {"action": r.get("action"), "object": r.get("object_name"), "message": r.get("message")}
+                for r in responses if r.get("status") == "erro"
+            ]
+            total_sent = len(responses)
+            skipped = len(messages) - total_sent
+            return {
+                "success": err_count == 0,
+                "count": ok_count,
+                "failed": err_count,
+                "skipped": skipped,
+                "errors": errors,
+                "responses": responses,
+            }
         except Exception as e:
             return {"success": False, "error": str(e)}
 
