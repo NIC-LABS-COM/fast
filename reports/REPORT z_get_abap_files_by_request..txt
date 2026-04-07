@@ -1,218 +1,186 @@
-*TESTE 16:44 
-
 REPORT z_get_files_by_request.
 
 ************************************************************************
-* Seleção
+* Declaração de Variáveis
 ************************************************************************
-DATA gv_dummy_req TYPE e070-trkorr.
+TYPES: BEGIN OF ty_range,
+         sign     TYPE char1,  " S (incluir) ou E (excluir)
+         option   TYPE char2,  " EQ, CP, BT, ...
+         low      TYPE string,  " Valor inferior
+         high     TYPE string,  " Valor superior
+       END OF ty_range.
 
-CONSTANTS gc_path TYPE string VALUE 'C:\temp\request_files.txt'.
+DATA: lt_range TYPE RANGE OF string.  " Tabela de intervalo para categorias válidas
 
-SELECT-OPTIONS:
-  p_req FOR gv_dummy_req OBLIGATORY.
-
-************************************************************************
-* Tipos
-************************************************************************
-TYPES: BEGIN OF ty_task,
-         taskid   TYPE string,
-         tasktype TYPE string,
-       END OF ty_task.
-
-TYPES: BEGIN OF ty_result,
-         file_name  TYPE string,
-         category   TYPE string,
-         tasks_json TYPE string,
-       END OF ty_result.
-
-TYPES: BEGIN OF ty_output,
-         line TYPE string,
-       END OF ty_output.
-
-TYPES: BEGIN OF ty_e070_task,
-         trkorr     TYPE e070-trkorr,
-         trfunction TYPE e070-trfunction,
-         strkorr    TYPE e070-strkorr,
-       END OF ty_e070_task.
-
-TYPES: BEGIN OF ty_e071_obj,
-         trkorr   TYPE e071-trkorr,
-         pgmid    TYPE e071-pgmid,
-         object   TYPE e071-object,
-         obj_name TYPE e071-obj_name,
-       END OF ty_e071_obj.
-
-TYPES tt_task      TYPE STANDARD TABLE OF ty_task      WITH DEFAULT KEY.
-TYPES tt_result    TYPE STANDARD TABLE OF ty_result    WITH DEFAULT KEY.
-TYPES tt_output    TYPE STANDARD TABLE OF ty_output    WITH DEFAULT KEY.
-TYPES tt_e070_task TYPE STANDARD TABLE OF ty_e070_task WITH DEFAULT KEY.
-TYPES tt_e071_obj  TYPE STANDARD TABLE OF ty_e071_obj  WITH DEFAULT KEY.
+DATA: lt_tasks      TYPE tt_e070_task,
+      lt_objects    TYPE tt_e071_obj,
+      lt_all_trkorr TYPE STANDARD TABLE OF e070-trkorr WITH DEFAULT KEY,
+      ls_req        LIKE LINE OF p_req,
+      ls_task       TYPE ty_e070_task,
+      ls_object     TYPE ty_e071_obj,
+      ls_result     TYPE ty_result,
+      lv_category   TYPE string,
+      lv_task_json  TYPE string,
+      lv_first      TYPE c,
+      lo_exc        TYPE REF TO lcx_app.
 
 ************************************************************************
-* Exceção
+* Inicialização do Intervalo de Categorias
 ************************************************************************
-CLASS lcx_app DEFINITION INHERITING FROM cx_static_check.
-  PUBLIC SECTION.
-    DATA mv_text TYPE string.
-    METHODS constructor
-      IMPORTING iv_text TYPE string.
-ENDCLASS.
+" Preenchendo o intervalo com as categorias válidas
+DATA: ls_range TYPE ty_range.
 
-CLASS lcx_app IMPLEMENTATION.
-  METHOD constructor.
-    super->constructor( ).
-    mv_text = iv_text.
-  ENDMETHOD.
-ENDCLASS.
+CLEAR: ls_range.
+
+ls_range-sign = 'I'.  " Incluir
+ls_range-option = 'EQ'.  " Igualdade
+ls_range-low = 'PROG'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'CLAS'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'FUNC'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'FUGR'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'INTF'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'TABL'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'DDLS'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'INCL'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'DOMA'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'DTEL'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'ENHO'.
+APPEND ls_range TO lt_range.
+
+ls_range-low = 'INDX'.
+APPEND ls_range TO lt_range.
 
 ************************************************************************
-* Serviço
+* Filtrando os Objetos e Gerando os Relatórios
 ************************************************************************
-CLASS lcl_service DEFINITION.
-  PUBLIC SECTION.
-    CLASS-METHODS get_files_by_requests
-      RETURNING VALUE(rt_result) TYPE tt_result
-      RAISING lcx_app.
+LOOP AT p_req INTO ls_req.
 
-    CLASS-METHODS build_final_json
-      IMPORTING it_result TYPE tt_result
-      RETURNING VALUE(rv_json) TYPE string.
+  APPEND ls_req-low TO lt_all_trkorr.
 
-  PRIVATE SECTION.
-    CLASS-METHODS normalize_category
-      IMPORTING iv_object TYPE e071-object
-      RETURNING VALUE(rv_category) TYPE string.
-ENDCLASS.
+  REFRESH lt_tasks.
+  SELECT trkorr trfunction strkorr
+    INTO TABLE lt_tasks
+    FROM e070
+    WHERE strkorr = ls_req-low.
 
-CLASS lcl_service IMPLEMENTATION.
-
-  METHOD get_files_by_requests.
-    DATA: lt_tasks      TYPE tt_e070_task,
-          lt_objects    TYPE tt_e071_obj,
-          lt_all_trkorr TYPE STANDARD TABLE OF e070-trkorr WITH DEFAULT KEY,
-          ls_req        LIKE LINE OF p_req,
-          ls_task       TYPE ty_e070_task,
-          ls_object     TYPE ty_e071_obj,
-          ls_result     TYPE ty_result,
-          lv_category   TYPE string,
-          lv_task_json  TYPE string,
-          lv_first      TYPE c,
-          lo_exc        TYPE REF TO lcx_app.
-
-    CLEAR rt_result.
-    CLEAR lv_found.
-
-*--------------------------------------------------------------------*
-* 1) Buscar tasks das requests
-*--------------------------------------------------------------------*
-    LOOP AT p_req INTO ls_req.
-
-      APPEND ls_req-low TO lt_all_trkorr.
-
-      REFRESH lt_tasks.
-      SELECT trkorr trfunction strkorr
-        INTO TABLE lt_tasks
-        FROM e070
-        WHERE strkorr = ls_req-low.
-
-      IF sy-subrc = 0.
-        LOOP AT lt_tasks INTO ls_task.
-          APPEND ls_task-trkorr TO lt_all_trkorr.
-        ENDLOOP.
-      ENDIF.
-
+  IF sy-subrc = 0.
+    LOOP AT lt_tasks INTO ls_task.
+      APPEND ls_task-trkorr TO lt_all_trkorr.
     ENDLOOP.
+  ENDIF.
 
-    SORT lt_all_trkorr.
-    DELETE ADJACENT DUPLICATES FROM lt_all_trkorr.
+ENDLOOP.
 
-    IF lt_all_trkorr IS INITIAL.
-      CREATE OBJECT lo_exc
-        EXPORTING
-          iv_text = 'Nenhuma request/task encontrada'.
-      RAISE EXCEPTION lo_exc.
+SORT lt_all_trkorr.
+DELETE ADJACENT DUPLICATES FROM lt_all_trkorr.
+
+IF lt_all_trkorr IS INITIAL.
+  CREATE OBJECT lo_exc
+    EXPORTING
+      iv_text = 'Nenhuma request/task encontrada'.
+  RAISE EXCEPTION lo_exc.
+ENDIF.
+
+************************************************************************
+* Buscar Objetos em E071
+************************************************************************
+SELECT trkorr pgmid object obj_name
+  INTO TABLE lt_objects
+  FROM e071
+  FOR ALL ENTRIES IN lt_all_trkorr
+  WHERE trkorr = lt_all_trkorr-table_line.
+
+IF sy-subrc <> 0 OR lt_objects IS INITIAL.
+  CREATE OBJECT lo_exc
+    EXPORTING
+      iv_text = 'Nenhum objeto encontrado na E071 para as requests informadas'.
+  RAISE EXCEPTION lo_exc.
+ENDIF.
+
+************************************************************************
+* Montar Saída Agrupada por File/Category e Filtrar Z/Y Requests
+************************************************************************
+LOOP AT lt_objects INTO ls_object.
+
+  " Verificar se o objeto começa com Z ou Y e está dentro do intervalo de categorias válidas
+  IF ( ls_object-obj_name CP 'Z*' OR ls_object-obj_name CP 'Y*' ) AND
+     ls_object-object IN lt_range.
+
+    lv_category = lcl_service=>normalize_category( ls_object-object ).
+
+    CLEAR ls_result.
+    READ TABLE rt_result INTO ls_result
+      WITH KEY file_name = ls_object-obj_name
+               category  = lv_category.
+
+    IF sy-subrc <> 0.
+      CLEAR ls_result.
+      ls_result-file_name  = ls_object-obj_name.
+      ls_result-category   = lv_category.
+      ls_result-tasks_json = ''.
     ENDIF.
 
-*--------------------------------------------------------------------*
-* 2) Buscar objetos em E071
-*--------------------------------------------------------------------*
-    SELECT trkorr pgmid object obj_name
-      INTO TABLE lt_objects
-      FROM e071
-      FOR ALL ENTRIES IN lt_all_trkorr
-      WHERE trkorr = lt_all_trkorr-table_line.
+    " Descobrir taskType na E070
+    CLEAR ls_task.
+    SELECT SINGLE trkorr trfunction strkorr
+      INTO ls_task
+      FROM e070
+      WHERE trkorr = ls_object-trkorr.
 
-    IF sy-subrc <> 0 OR lt_objects IS INITIAL.
-      CREATE OBJECT lo_exc
-        EXPORTING
-          iv_text = 'Nenhum objeto encontrado na E071 para as requests informadas'.
-      RAISE EXCEPTION lo_exc.
-    ENDIF.
+    CLEAR lv_task_json.
+    CONCATENATE '{"taskId":"' ls_object-trkorr '","taskType":"' ls_task-trfunction '"}'
+               INTO lv_task_json.
 
-*--------------------------------------------------------------------*
-* 3) Montar saída agrupada por file/category e filtrar Z/Y requests
-*--------------------------------------------------------------------*
-    LOOP AT lt_objects INTO ls_object.
-
-      " Verificar se o objeto começa com Z ou Y e está dentro do intervalo de categorias válidas
-      IF ( ls_object-obj_name CP 'Z*' OR ls_object-obj_name CP 'Y*' ) AND
-         ls_object-object IN lt_range.
-
-        lv_category = lcl_service=>normalize_category( ls_object-object ).
-
-        CLEAR ls_result.
-        READ TABLE rt_result INTO ls_result
-          WITH KEY file_name = ls_object-obj_name
-                   category  = lv_category.
-
-        IF sy-subrc <> 0.
-          CLEAR ls_result.
-          ls_result-file_name  = ls_object-obj_name.
-          ls_result-category   = lv_category.
-          ls_result-tasks_json = ''.
-        ENDIF.
-
-   *--------------------------------------------------------------------*
-    * descobrir taskType na E070
-   *--------------------------------------------------------------------*
-        CLEAR ls_task.
-        SELECT SINGLE trkorr trfunction strkorr
-          INTO ls_task
-          FROM e070
-          WHERE trkorr = ls_object-trkorr.
-
-        CLEAR lv_task_json.
-        CONCATENATE '{"taskId":"' ls_object-trkorr '","taskType":"' ls_task-trfunction '"}'
-                   INTO lv_task_json.
-
-        IF ls_result-tasks_json IS INITIAL.
-          ls_result-tasks_json = lv_task_json.
-        ELSE.
-          IF ls_result-tasks_json CS lv_task_json.
-          ELSE.
-            CONCATENATE ls_result-tasks_json ',' lv_task_json
+    IF ls_result-tasks_json IS INITIAL.
+      ls_result-tasks_json = lv_task_json.
+    ELSE.
+      IF ls_result-tasks_json CS lv_task_json.
+      ELSE.
+        CONCATENATE ls_result-tasks_json ',' lv_task_json
                    INTO ls_result-tasks_json.
-          ENDIF.
-        ENDIF.
+      ENDIF.
+    ENDIF.
 
-        DELETE rt_result WHERE file_name = ls_object-obj_name
+    DELETE rt_result WHERE file_name = ls_object-obj_name
                           AND category  = lv_category.
 
-        APPEND ls_result TO rt_result.
-      ENDIF. "FIM DO IF
-    ENDLOOP.
+    APPEND ls_result TO rt_result.
+  ENDIF. " FIM DO IF
+ENDLOOP.
 
-    IF rt_result IS INITIAL.
-      CREATE OBJECT lo_exc
-        EXPORTING
-          iv_text = 'Nenhum resultado montado para as requests informadas'.
-      RAISE EXCEPTION lo_exc.
-    ENDIF.
+IF rt_result IS INITIAL.
+  CREATE OBJECT lo_exc
+    EXPORTING
+      iv_text = 'Nenhum resultado montado para as requests informadas'.
+  RAISE EXCEPTION lo_exc.
+ENDIF.
 
-  ENDMETHOD.
+ENDMETHOD.
 
-  METHOD normalize_category.
+************************************************************************
+* Método Normalizar Categoria
+************************************************************************
+METHOD normalize_category.
     CLEAR rv_category.
 
     CASE iv_object.
@@ -245,7 +213,10 @@ CLASS lcl_service IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
-  METHOD build_final_json.
+************************************************************************
+* Montar JSON Final
+************************************************************************
+METHOD build_final_json.
     DATA: ls_result TYPE ty_result,
           lv_line   TYPE string,
           lv_first  TYPE c.
