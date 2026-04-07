@@ -153,9 +153,9 @@ CLASS lcl_service IMPLEMENTATION.
 *--------------------------------------------------------------------*
     LOOP AT lt_objects INTO ls_object.
 
-      " Verificar se o objeto começa com Z ou Y
+      " Verificar se o objeto começa com Z ou Y e está dentro do intervalo de categorias válidas
       IF ( ls_object-obj_name CP 'Z*' OR ls_object-obj_name CP 'Y*' ) AND
-         ( ls_object-object IN ['PROG', 'CLAS', 'FUNC', 'FUGR', 'INTF', 'TABL', 'DDLS', 'INCL', 'DOMA', 'DTEL', 'ENHO', 'INDX'] ).
+         ls_object-object IN lt_range.
 
         lv_category = lcl_service=>normalize_category( ls_object-object ).
 
