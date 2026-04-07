@@ -307,7 +307,7 @@ CLASS lcl_writer IMPLEMENTATION.
     IF sy-subrc <> 0.
       CREATE OBJECT lo_exc
         EXPORTING
-          iv_text = 'Erro ao gerar arquivo da request'.
+          iv_text = 'Erro ao gerar arquivo da request' .
       RAISE EXCEPTION lo_exc.
     ENDIF.
   ENDMETHOD.
