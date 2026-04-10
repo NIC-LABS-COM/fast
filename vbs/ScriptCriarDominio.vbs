@@ -119,13 +119,16 @@ session.findById("wnd[0]/tbar[1]/btn[27]").press
 WScript.Sleep 1000
 session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").text = packageName
 session.findById("wnd[1]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
-session.findById("wnd[1]/tbar[0]/btn[7]").press
+session.findById("wnd[1]").sendVKey 0
 WScript.Sleep 1000
 
-If UCase(Trim(packageName)) <> "$TMP" Then
+' [ALTERADO] Gravacao direta na REQUEST recebida (persist definitivo)
+' Antes: gravava na request somente quando packageName <> "$TMP"
+' Agora: grava diretamente na request se requestId for fornecido
+If requestId <> "" Then
    session.findById("wnd[1]/usr/ctxtKO008-TRKORR").text = requestId
    session.findById("wnd[1]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
-   session.findById("wnd[1]/tbar[0]/btn[0]").press
+   session.findById("wnd[1]").sendVKey 0
    WScript.Sleep 1000
 End If
 

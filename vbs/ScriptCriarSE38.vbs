@@ -185,15 +185,17 @@ WScript.Sleep 800
 ' Popup do pacote
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").text = packageName
 session.findById("wnd[2]/usr/ctxtKO007-L_DEVCLASS").caretPosition = Len(packageName)
-session.findById("wnd[2]/tbar[0]/btn[0]").press
+session.findById("wnd[2]").sendVKey 0
 WScript.Sleep 1000
 
-' Se nao for $TMP e vier request, tenta preencher
-If UCase(Trim(packageName)) <> "$TMP" Then
+' [ALTERADO] Gravacao direta na REQUEST recebida (persist definitivo)
+' Antes: gravava na request somente quando packageName <> "$TMP"
+' Agora: grava diretamente na request se requestId for fornecido
+If requestId <> "" Then
    On Error Resume Next
    session.findById("wnd[3]/usr/ctxtKO008-TRKORR").text = requestId
    session.findById("wnd[3]/usr/ctxtKO008-TRKORR").caretPosition = Len(requestId)
-   session.findById("wnd[3]/tbar[0]/btn[0]").press
+   session.findById("wnd[3]").sendVKey 0
    Err.Clear
    On Error GoTo 0
    WScript.Sleep 800
