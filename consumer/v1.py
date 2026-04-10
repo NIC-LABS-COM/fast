@@ -10,7 +10,7 @@ from .config import (
 )
 from .logger import log
 from .parsers import parse_requests_txt, parse_reports_txt, parse_packages_txt, parse_versions_metadata_txt, parse_abap_files_by_request_txt
-from .vbs import download_vbs, execute_vbs
+from .vbs import get_vbs_path, execute_vbs
 
 
 # ------------------------------------------------------------------ #
@@ -166,10 +166,10 @@ def build_args_v1(routing_key: str, payload: dict) -> list[str] | None:
 # ------------------------------------------------------------------ #
 #  Helper genérico — download + execução + tratamento de erro
 # ------------------------------------------------------------------ #
-def _run_query_vbs(channel, payload: dict, vbs_url: str,
+def _run_query_vbs(channel, payload: dict, vbs_filename: str,
                    args: list[str], routing_key: str):
     """
-    Executa download + cscript + tratamento padrao de erro.
+    Resolve caminho local + executa cscript + tratamento padrao de erro.
 
     Retorna (True, stdout, correlation_id, reply_to)  em caso de sucesso
     ou      (False, None, correlation_id, reply_to) em caso de falha
@@ -180,9 +180,9 @@ def _run_query_vbs(channel, payload: dict, vbs_url: str,
 
     log(f"[QUERY] {routing_key} | args={args} | correlationId={correlation_id}")
 
-    vbs_path = download_vbs(vbs_url)
+    vbs_path = get_vbs_path(vbs_filename)
     if vbs_path is None:
-        error_msg = "ERRO: Falha no download do VBS"
+        error_msg = f"ERRO: VBS '{vbs_filename}' nao encontrado"
         log(f"[QUERY] FALHA: {routing_key}: {error_msg}")
         publish_string_response(channel, reply_to, error_msg, correlation_id)
         return False, None, correlation_id, reply_to
@@ -201,8 +201,8 @@ def _run_query_vbs(channel, payload: dict, vbs_url: str,
 # ------------------------------------------------------------------ #
 #  Handlers de query
 # ------------------------------------------------------------------ #
-def process_query_requests(channel, payload: dict, vbs_url: str) -> None:
-    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_url, [], "query.requests.v1")
+def process_query_requests(channel, payload: dict, vbs_filename: str) -> None:
+    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_filename, [], "query.requests.v1")
     if not ok:
         return
     try:
@@ -215,8 +215,8 @@ def process_query_requests(channel, payload: dict, vbs_url: str) -> None:
     publish_query_response(channel, reply, data, cid)
 
 
-def process_query_all_files(channel, payload: dict, vbs_url: str) -> None:
-    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_url, [], "query.all.files.v1")
+def process_query_all_files(channel, payload: dict, vbs_filename: str) -> None:
+    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_filename, [], "query.all.files.v1")
     if not ok:
         return
     try:
@@ -229,8 +229,8 @@ def process_query_all_files(channel, payload: dict, vbs_url: str) -> None:
     publish_query_response(channel, reply, data, cid)
 
 
-def process_query_all_packages(channel, payload: dict, vbs_url: str) -> None:
-    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_url, [], "query.all.packages.v1")
+def process_query_all_packages(channel, payload: dict, vbs_filename: str) -> None:
+    ok, details, cid, reply = _run_query_vbs(channel, payload, vbs_filename, [], "query.all.packages.v1")
     if not ok:
         return
     try:
@@ -243,7 +243,7 @@ def process_query_all_packages(channel, payload: dict, vbs_url: str) -> None:
     publish_query_response(channel, reply, data, cid)
 
 
-def process_query_versions_metadata(channel, payload: dict, vbs_url: str) -> None:
+def process_query_versions_metadata(channel, payload: dict, vbs_filename: str) -> None:
     file_name = payload.get("fileName", "").strip().upper()
     category  = payload.get("category", "").strip().upper()
     if not file_name:
@@ -252,7 +252,7 @@ def process_query_versions_metadata(channel, payload: dict, vbs_url: str) -> Non
         publish_string_response(channel, reply, "ERRO: fileName ausente no payload", cid)
         return
     ok, details, cid, reply = _run_query_vbs(
-        channel, payload, vbs_url, [file_name, category], "query.versions.metadata.v1")
+        channel, payload, vbs_filename, [file_name, category], "query.versions.metadata.v1")
     if not ok:
         return
     try:
@@ -265,7 +265,7 @@ def process_query_versions_metadata(channel, payload: dict, vbs_url: str) -> Non
     publish_query_response(channel, reply, data, cid)
 
 
-def process_query_file_category(channel, payload: dict, vbs_url: str) -> None:
+def process_query_file_category(channel, payload: dict, vbs_filename: str) -> None:
     file_name = payload.get("fileName", "").strip().upper()
     if not file_name:
         cid = payload.get("correlationId", "")
@@ -273,7 +273,7 @@ def process_query_file_category(channel, payload: dict, vbs_url: str) -> None:
         publish_string_response(channel, reply, "ERRO: fileName ausente no payload", cid)
         return
     ok, details, cid, reply = _run_query_vbs(
-        channel, payload, vbs_url, [file_name], "query.file.category.v1")
+        channel, payload, vbs_filename, [file_name], "query.file.category.v1")
     if not ok:
         return
     category = details.replace("\\n", "").strip()
@@ -281,7 +281,7 @@ def process_query_file_category(channel, payload: dict, vbs_url: str) -> None:
     publish_string_response(channel, reply, category, cid)
 
 
-def process_query_request_files(channel, payload: dict, vbs_url: str) -> None:
+def process_query_request_files(channel, payload: dict, vbs_filename: str) -> None:
     requests = payload.get("requests", [])
     if isinstance(requests, list):
         requests_str = ",".join(r.strip() for r in requests if r.strip())
@@ -293,7 +293,7 @@ def process_query_request_files(channel, payload: dict, vbs_url: str) -> None:
         publish_string_response(channel, reply, "ERRO: requests ausente no payload", cid)
         return
     ok, details, cid, reply = _run_query_vbs(
-        channel, payload, vbs_url, [requests_str], "query.request.files.v1")
+        channel, payload, vbs_filename, [requests_str], "query.request.files.v1")
     if not ok:
         return
     try:
@@ -306,7 +306,7 @@ def process_query_request_files(channel, payload: dict, vbs_url: str) -> None:
     publish_query_response(channel, reply, data, cid)
 
 
-def process_query_request_description(channel, payload: dict, vbs_url: str) -> None:
+def process_query_request_description(channel, payload: dict, vbs_filename: str) -> None:
     request_id = payload.get("requestId", "").strip().upper()
     if not request_id:
         cid = payload.get("correlationId", "")
@@ -314,7 +314,7 @@ def process_query_request_description(channel, payload: dict, vbs_url: str) -> N
         publish_string_response(channel, reply, "ERRO: requestId ausente no payload", cid)
         return
     ok, details, cid, reply = _run_query_vbs(
-        channel, payload, vbs_url, [request_id], "query.request.description.v1")
+        channel, payload, vbs_filename, [request_id], "query.request.description.v1")
     if not ok:
         return
     description = details.replace("\\n", "").strip()
@@ -324,7 +324,7 @@ def process_query_request_description(channel, payload: dict, vbs_url: str) -> N
     publish_string_response(channel, reply, description, cid)
 
 
-def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> None:
+def process_query_read_from_version(channel, payload: dict, vbs_filename: str) -> None:
     file_name  = payload.get("fileName", "").strip().upper()
     category   = payload.get("category", "").strip().upper()
     version_id = payload.get("versionId", "").strip()
@@ -339,7 +339,7 @@ def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> Non
         publish_string_response(channel, reply, "ERRO: versionId ausente no payload", cid)
         return
     ok, details, cid, reply = _run_query_vbs(
-        channel, payload, vbs_url, [file_name, category, version_id], "query.read.from.version.v1")
+        channel, payload, vbs_filename, [file_name, category, version_id], "query.read.from.version.v1")
     if not ok:
         return
     content = details.replace("\\n", "\n")
@@ -347,11 +347,11 @@ def process_query_read_from_version(channel, payload: dict, vbs_url: str) -> Non
     publish_string_response(channel, reply, content, cid)
 
 
-def process_query_search(channel, payload: dict, vbs_url: str) -> None:
+def process_query_search(channel, payload: dict, vbs_filename: str) -> None:
     file_filter    = payload.get("fileFilter", "*").strip()
     package_filter = payload.get("packageFilter", "$TMP").strip()
     ok, details, cid, reply = _run_query_vbs(
-        channel, payload, vbs_url, [file_filter, package_filter], "query.search.v1")
+        channel, payload, vbs_filename, [file_filter, package_filter], "query.search.v1")
     if not ok:
         return
     try:
@@ -364,7 +364,7 @@ def process_query_search(channel, payload: dict, vbs_url: str) -> None:
     publish_query_response(channel, reply, data, cid)
 
 
-def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
+def process_query_read_file(channel, payload: dict, vbs_filename: str) -> None:
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
     file_name      = payload.get("fileName", "").strip().upper()
@@ -375,9 +375,9 @@ def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
         publish_read_file_response(channel, reply_to, {"error": "fileName ausente no payload"}, correlation_id)
         return
 
-    vbs_path = download_vbs(vbs_url)
+    vbs_path = get_vbs_path(vbs_filename)
     if vbs_path is None:
-        publish_read_file_response(channel, reply_to, {"error": "Falha no download do VBS"}, correlation_id)
+        publish_read_file_response(channel, reply_to, {"error": f"VBS '{vbs_filename}' nao encontrado"}, correlation_id)
         return
 
     ok, details = execute_vbs(vbs_path, [file_name])
@@ -397,7 +397,7 @@ def process_query_read_file(channel, payload: dict, vbs_url: str) -> None:
 # ------------------------------------------------------------------ #
 #  Handler generico de comando
 # ------------------------------------------------------------------ #
-def process_v1_event(channel, payload: dict, routing_key: str, vbs_url: str) -> None:
+def process_v1_event(channel, payload: dict, routing_key: str, vbs_filename: str) -> None:
     correlation_id = payload.get("correlationId", "")
     reply_to       = payload.get("replyTo", QUEUE_RESPONSES)
     file_name      = payload.get("fileName", "desconhecido").strip().upper()
@@ -417,10 +417,10 @@ def process_v1_event(channel, payload: dict, routing_key: str, vbs_url: str) -> 
                              "fileName ausente no payload.", False, correlation_id)
         return
 
-    vbs_path = download_vbs(vbs_url)
+    vbs_path = get_vbs_path(vbs_filename)
     if vbs_path is None:
         publish_fix_response(channel, reply_to, True,
-                             f"Falha no download do VBS: {vbs_url}", False, correlation_id)
+                             f"VBS '{vbs_filename}' nao encontrado.", False, correlation_id)
         return
 
     ok, details = execute_vbs(vbs_path, args)
@@ -491,35 +491,35 @@ def callback_v1(ch, method, properties, body):
         log(f"[V1] Header 'amqp_receivedRoutingKey' ausente ou vazio. Mensagem ignorada.")
         return
 
-    vbs_url = VBS_BY_ROUTING_KEY.get(command)
-    if vbs_url is None:
+    vbs_filename = VBS_BY_ROUTING_KEY.get(command)
+    if vbs_filename is None:
         log(f"[V1] Comando '{command}' nao mapeado em VBS_BY_ROUTING_KEY. Ignorado.")
         return
 
     try:
         if command == "query.read.file.v1":
-            process_query_read_file(ch, payload, vbs_url)
+            process_query_read_file(ch, payload, vbs_filename)
         elif command == "query.requests.v1":
-            process_query_requests(ch, payload, vbs_url)
+            process_query_requests(ch, payload, vbs_filename)
         elif command == "query.all.files.v1":
-            process_query_all_files(ch, payload, vbs_url)
+            process_query_all_files(ch, payload, vbs_filename)
         elif command == "query.all.packages.v1":
-            process_query_all_packages(ch, payload, vbs_url)
+            process_query_all_packages(ch, payload, vbs_filename)
         elif command == "query.versions.metadata.v1":
-            process_query_versions_metadata(ch, payload, vbs_url)
+            process_query_versions_metadata(ch, payload, vbs_filename)
         elif command == "query.file.category.v1":
-            process_query_file_category(ch, payload, vbs_url)
+            process_query_file_category(ch, payload, vbs_filename)
         elif command == "query.request.files.v1":
-            process_query_request_files(ch, payload, vbs_url)
+            process_query_request_files(ch, payload, vbs_filename)
         elif command == "query.request.description.v1":
-            process_query_request_description(ch, payload, vbs_url)
+            process_query_request_description(ch, payload, vbs_filename)
         elif command == "query.read.from.version.v1":
-            process_query_read_from_version(ch, payload, vbs_url)
+            process_query_read_from_version(ch, payload, vbs_filename)
         elif command == "query.search.v1":
-            process_query_search(ch, payload, vbs_url)
+            process_query_search(ch, payload, vbs_filename)
         elif command in QUERY_ROUTING_KEYS:
             log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
         else:
-            process_v1_event(ch, payload, command, vbs_url)
+            process_v1_event(ch, payload, command, vbs_filename)
     except Exception:
         log(f"Erro nao tratado (v1): {traceback.format_exc()}")
