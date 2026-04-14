@@ -14,54 +14,20 @@ DATA: lt_requests TYPE STANDARD TABLE OF ty_request,
       lv_fullpath TYPE string,
       lv_line     TYPE string.
 
-DATA: lt_obj_types TYPE RANGE OF tadir-object,
-      ls_obj_type  LIKE LINE OF lt_obj_types.
-
 START-OF-SELECTION.
 
-  " Monta range com os tipos de objeto relevantes
-  CLEAR ls_obj_type.
-  ls_obj_type-sign   = 'I'.
-  ls_obj_type-option = 'EQ'.
-
-  ls_obj_type-low = 'PROG'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'CLAS'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'ENHO'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'FUNC'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'FUGR'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'INDX'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'INTF'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'TABL'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'DDLS'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'INCL'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'DOMA'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'DTEL'. APPEND ls_obj_type TO lt_obj_types.
-
-  " Busca request pai a partir das tasks
-  " Regras:
-  " - traz se a task tiver objeto dos tipos desejados
-  " - traz também se a task estiver vazia
+  " Busca todas as requests pai que tenham ao menos uma task do usuário logado
   SELECT DISTINCT
          req_pai~trkorr  AS request,
          txt~as4text     AS description
     FROM e070 AS task
     INNER JOIN e070 AS req_pai
       ON req_pai~trkorr = task~strkorr
-    LEFT OUTER JOIN e071 AS obj
-      ON obj~trkorr = task~trkorr
-    LEFT OUTER JOIN tadir AS dir
-      ON dir~pgmid    = obj~pgmid
-     AND dir~object   = obj~object
-     AND dir~obj_name = obj~obj_name
     LEFT OUTER JOIN e07t AS txt
       ON txt~trkorr = req_pai~trkorr
-   WHERE task~strkorr IS NOT INITIAL
+   WHERE task~as4user    = @sy-uname
+     AND task~strkorr    <> ''
      AND req_pai~trfunction = 'K'
-     AND (
-            dir~object IN @lt_obj_types
-         OR obj~trkorr IS INITIAL
-         OR dir~object IS INITIAL
-         )
    ORDER BY req_pai~trkorr
     INTO TABLE @lt_requests.
 
