@@ -19,10 +19,12 @@ if _env_path.exists():
 # ------------------------------------------------------------------ #
 #  Configuracao RabbitMQ
 # ------------------------------------------------------------------ #
-RABBITMQ_HOST  = os.environ.get("RABBITMQ_HOST", "jackal.rmq.cloudamqp.com")
-RABBITMQ_USER  = os.environ.get("RABBITMQ_USER", "rhrstugr")
-RABBITMQ_PASS  = os.environ.get("RABBITMQ_PASS", "HC2wvtBtou_DUk9AA276209T4718K9cF")
-RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST", "rhrstugr")
+BROKER_HOST     = os.environ.get("BROKER_HOST",     "rabbitmq.nic-labs.com")
+BROKER_PORT     = int(os.environ.get("BROKER_PORT", "5672"))
+BROKER_USER     = os.environ.get("BROKER_USER",     "nicaiuser")
+BROKER_PASSWORD = os.environ.get("BROKER_PASSWORD", "USOYl8SM*L1P3iOXs@f3$oYLwdOA6xJv")
+BROKER_VHOST    = os.environ.get("BROKER_VHOST",    "/")
+BROKER_TIMEOUT  = int(os.environ.get("BROKER_TIMEOUT", "150000"))
 
 # Filas — legado
 QUEUE_COMMANDS  = "queue_vpn_usiminas"

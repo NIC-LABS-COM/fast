@@ -1,17 +1,15 @@
 """Conexao RabbitMQ."""
 
-import ssl
-
 import pika
 
-from .config import RABBITMQ_HOST, RABBITMQ_USER, RABBITMQ_PASS, RABBITMQ_VHOST
+from .config import BROKER_HOST, BROKER_PORT, BROKER_USER, BROKER_PASSWORD, BROKER_VHOST, BROKER_TIMEOUT
 
 
 def get_rabbitmq_connection():
-    credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-    context = ssl.create_default_context()
+    credentials = pika.PlainCredentials(BROKER_USER, BROKER_PASSWORD)
     params = pika.ConnectionParameters(
-        host=RABBITMQ_HOST, port=5671, virtual_host=RABBITMQ_VHOST,
-        credentials=credentials, ssl_options=pika.SSLOptions(context),
+        host=BROKER_HOST, port=BROKER_PORT, virtual_host=BROKER_VHOST,
+        credentials=credentials,
+        blocked_connection_timeout=BROKER_TIMEOUT / 1000,
     )
     return pika.BlockingConnection(params)

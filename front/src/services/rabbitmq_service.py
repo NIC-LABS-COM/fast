@@ -4,7 +4,6 @@ Responsavel por publicar comandos e escutar respostas.
 """
 import json
 import logging
-import ssl
 import threading
 import time
 import traceback
@@ -15,10 +14,12 @@ import pika
 from core.config import (
     QUEUE_COMMANDS,
     QUEUE_RESPONSES,
-    RABBITMQ_HOST,
-    RABBITMQ_PASS,
-    RABBITMQ_USER,
-    RABBITMQ_VHOST,
+    BROKER_HOST,
+    BROKER_PORT,
+    BROKER_PASSWORD,
+    BROKER_USER,
+    BROKER_VHOST,
+    BROKER_TIMEOUT,
 )
 
 logger = logging.getLogger("sap_publisher")
@@ -28,14 +29,13 @@ class RabbitMQService:
     """Encapsula todas as operacoes com o broker RabbitMQ."""
 
     def _get_connection(self) -> pika.BlockingConnection:
-        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-        context = ssl.create_default_context()
+        credentials = pika.PlainCredentials(BROKER_USER, BROKER_PASSWORD)
         params = pika.ConnectionParameters(
-            host=RABBITMQ_HOST,
-            port=5671,
-            virtual_host=RABBITMQ_VHOST,
+            host=BROKER_HOST,
+            port=BROKER_PORT,
+            virtual_host=BROKER_VHOST,
             credentials=credentials,
-            ssl_options=pika.SSLOptions(context),
+            blocked_connection_timeout=BROKER_TIMEOUT / 1000,
         )
         return pika.BlockingConnection(params)
 
