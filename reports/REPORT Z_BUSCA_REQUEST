@@ -19,7 +19,7 @@ DATA: lt_obj_types TYPE RANGE OF tadir-object,
 
 START-OF-SELECTION.
 
-  " Monta range com os tipos de objeto relevantes (conforme TADIR-OBJECT)
+  " Monta range com os tipos de objeto relevantes
   CLEAR ls_obj_type.
   ls_obj_type-sign   = 'I'.
   ls_obj_type-option = 'EQ'.
@@ -37,28 +37,32 @@ START-OF-SELECTION.
   ls_obj_type-low = 'DOMA'. APPEND ls_obj_type TO lt_obj_types.
   ls_obj_type-low = 'DTEL'. APPEND ls_obj_type TO lt_obj_types.
 
-  " Busca requests Workbench liberadas
-  " Agora também traz requests sem item mapeado / sem correspondência na TADIR
+  " Busca request pai a partir das tasks
+  " Regras:
+  " - traz se a task tiver objeto dos tipos desejados
+  " - traz também se a task estiver vazia
   SELECT DISTINCT
-         req~trkorr  AS request,
-         txt~as4text AS description
-    FROM e070 AS req
+         req_pai~trkorr  AS request,
+         txt~as4text     AS description
+    FROM e070 AS task
+    INNER JOIN e070 AS req_pai
+      ON req_pai~trkorr = task~strkorr
     LEFT OUTER JOIN e071 AS obj
-      ON req~trkorr = obj~trkorr
+      ON obj~trkorr = task~trkorr
     LEFT OUTER JOIN tadir AS dir
-      ON obj~pgmid    = dir~pgmid
-     AND obj~object   = dir~object
-     AND obj~obj_name = dir~obj_name
+      ON dir~pgmid    = obj~pgmid
+     AND dir~object   = obj~object
+     AND dir~obj_name = obj~obj_name
     LEFT OUTER JOIN e07t AS txt
-      ON req~trkorr = txt~trkorr
-   WHERE req~trfunction = 'K'
-     AND req~trstatus   = 'D'
+      ON txt~trkorr = req_pai~trkorr
+   WHERE task~strkorr IS NOT INITIAL
+     AND req_pai~trfunction = 'K'
      AND (
             dir~object IN @lt_obj_types
          OR obj~trkorr IS INITIAL
          OR dir~object IS INITIAL
          )
-   ORDER BY req~trkorr
+   ORDER BY req_pai~trkorr
     INTO TABLE @lt_requests.
 
   IF sy-subrc <> 0 OR lt_requests IS INITIAL.
