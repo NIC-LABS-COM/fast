@@ -4,96 +4,50 @@
 REPORT z_busca_request.
 
 TYPES: BEGIN OF ty_task,
-         task         TYPE e070-trkorr,
-         request      TYPE e070-trkorr,
-         owner        TYPE e070-as4user,
-         task_text    TYPE e07t-as4text,
-         request_text TYPE e07t-as4text,
-         has_objects  TYPE char1,
+         task          TYPE e070-trkorr,
+         request_pai   TYPE e070-strkorr,
+         descricao_req TYPE e07t-as4text,
        END OF ty_task.
 
-DATA: lt_tasks TYPE STANDARD TABLE OF ty_task,
-      ls_task  TYPE ty_task.
-
-DATA: lt_output   TYPE STANDARD TABLE OF string,
+DATA: lt_tasks    TYPE STANDARD TABLE OF ty_task,
+      ls_task     TYPE ty_task,
+      lt_output   TYPE STANDARD TABLE OF string,
       lv_line     TYPE string,
-      lv_fullpath TYPE string,
-      lv_status   TYPE string.
-
-DATA: lt_with_objects TYPE SORTED TABLE OF e071-trkorr
-                        WITH UNIQUE KEY table_line.
-
-PARAMETERS: p_user TYPE e070-as4user DEFAULT sy-uname,
-            p_file TYPE string DEFAULT 'C:\temp\tasks_usuario.txt'.
+      lv_fullpath TYPE string.
 
 START-OF-SELECTION.
 
-  " Busca tasks do usuário
-  " Task = registro em E070 com STRKORR preenchido
-  " STRKORR = request pai
   SELECT tas~trkorr      AS task,
-         tas~strkorr     AS request,
-         tas~as4user     AS owner,
-         txt_tas~as4text AS task_text,
-         txt_req~as4text AS request_text
+         tas~strkorr     AS request_pai,
+         txt_req~as4text AS descricao_req
     FROM e070 AS tas
-    LEFT OUTER JOIN e07t AS txt_tas
-      ON txt_tas~trkorr = tas~trkorr
-     AND txt_tas~langu  = @sy-langu
     LEFT OUTER JOIN e07t AS txt_req
       ON txt_req~trkorr = tas~strkorr
      AND txt_req~langu  = @sy-langu
-    INTO CORRESPONDING FIELDS OF TABLE @lt_tasks
+    INTO TABLE @lt_tasks
    WHERE tas~strkorr IS NOT INITIAL
-     AND tas~as4user  = @p_user
+     AND tas~as4user  = @sy-uname
      AND tas~trstatus = 'D'
    ORDER BY tas~trkorr.
 
   IF lt_tasks IS INITIAL.
-    MESSAGE 'Nenhuma task modificável encontrada para o usuário.' TYPE 'S' DISPLAY LIKE 'W'.
+    MESSAGE 'Nenhuma task encontrada para o usuário logado.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  " Descobre quais tasks possuem objetos em E071
-  SELECT DISTINCT trkorr
-    FROM e071
-    INTO TABLE @lt_with_objects
-    FOR ALL ENTRIES IN @lt_tasks
-   WHERE trkorr = @lt_tasks-task.
-
-  " Marca se a task tem objetos ou está vazia
   LOOP AT lt_tasks INTO ls_task.
-    READ TABLE lt_with_objects
-      WITH KEY table_line = ls_task-task
-      TRANSPORTING NO FIELDS.
+    CLEAR lv_line.
 
-    IF sy-subrc = 0.
-      ls_task-has_objects = 'X'.
+    IF ls_task-descricao_req IS INITIAL.
+      lv_line = |{ ls_task-task } ; { ls_task-request_pai }|.
     ELSE.
-      CLEAR ls_task-has_objects.
+      lv_line = |{ ls_task-task } ; { ls_task-request_pai }: { ls_task-descricao_req }|.
     ENDIF.
-
-    MODIFY lt_tasks FROM ls_task.
-  ENDLOOP.
-
-  " Cabeçalho do arquivo
-  APPEND 'TASK;REQUEST_PAI;OWNER;TEM_OBJETO;DESCRICAO_TASK;DESCRICAO_REQUEST' TO lt_output.
-
-  " Monta saída
-  LOOP AT lt_tasks INTO ls_task.
-
-    IF ls_task-has_objects = 'X'.
-      lv_status = 'SIM'.
-    ELSE.
-      lv_status = 'NAO'.
-    ENDIF.
-
-    lv_line = |{ ls_task-task };{ ls_task-request };{ ls_task-owner };{ lv_status };{ ls_task-task_text };{ ls_task-request_text }|.
 
     APPEND lv_line TO lt_output.
   ENDLOOP.
 
-  lv_fullpath = p_file.
+  lv_fullpath = 'C:\temp\workbench_requests.txt'.
 
   CALL METHOD cl_gui_frontend_services=>gui_download
     EXPORTING
@@ -126,7 +80,7 @@ START-OF-SELECTION.
       OTHERS                  = 22.
 
   IF sy-subrc = 0.
-    MESSAGE |{ lines( lt_tasks ) } tasks baixadas em { lv_fullpath }| TYPE 'S'.
+    MESSAGE |{ lines( lt_output ) } tasks baixadas em { lv_fullpath }| TYPE 'S'.
   ELSE.
     MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
   ENDIF.
