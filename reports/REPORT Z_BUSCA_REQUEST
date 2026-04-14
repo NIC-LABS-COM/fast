@@ -3,74 +3,97 @@
 *&---------------------------------------------------------------------*
 REPORT z_busca_request.
 
-TYPES: BEGIN OF ty_request,
-         request     TYPE e070-trkorr,
-         description TYPE e07t-as4text,
-       END OF ty_request.
+TYPES: BEGIN OF ty_task,
+         task         TYPE e070-trkorr,
+         request      TYPE e070-trkorr,
+         owner        TYPE e070-as4user,
+         task_text    TYPE e07t-as4text,
+         request_text TYPE e07t-as4text,
+         has_objects  TYPE char1,
+       END OF ty_task.
 
-DATA: lt_requests TYPE STANDARD TABLE OF ty_request,
-      ls_request  TYPE ty_request,
-      lt_output   TYPE STANDARD TABLE OF string,
+DATA: lt_tasks TYPE STANDARD TABLE OF ty_task,
+      ls_task  TYPE ty_task.
+
+DATA: lt_output   TYPE STANDARD TABLE OF string,
+      lv_line     TYPE string,
       lv_fullpath TYPE string,
-      lv_line     TYPE string.
+      lv_status   TYPE string.
 
-DATA: lt_obj_types TYPE RANGE OF tadir-object,
-      ls_obj_type  LIKE LINE OF lt_obj_types.
+DATA: lt_with_objects TYPE SORTED TABLE OF e071-trkorr
+                        WITH UNIQUE KEY table_line.
+
+PARAMETERS: p_user TYPE e070-as4user DEFAULT sy-uname,
+            p_file TYPE string DEFAULT 'C:\temp\tasks_usuario.txt'.
 
 START-OF-SELECTION.
 
-* Monta range com os tipos de objeto relevantes (conforme TADIR-OBJECT)
-  ls_obj_type-sign   = 'I'.
-  ls_obj_type-option = 'EQ'.
+  " Busca tasks do usuário
+  " Task = registro em E070 com STRKORR preenchido
+  " STRKORR = request pai
+  SELECT tas~trkorr      AS task,
+         tas~strkorr     AS request,
+         tas~as4user     AS owner,
+         txt_tas~as4text AS task_text,
+         txt_req~as4text AS request_text
+    FROM e070 AS tas
+    LEFT OUTER JOIN e07t AS txt_tas
+      ON txt_tas~trkorr = tas~trkorr
+     AND txt_tas~langu  = @sy-langu
+    LEFT OUTER JOIN e07t AS txt_req
+      ON txt_req~trkorr = tas~strkorr
+     AND txt_req~langu  = @sy-langu
+    INTO CORRESPONDING FIELDS OF TABLE @lt_tasks
+   WHERE tas~strkorr IS NOT INITIAL
+     AND tas~as4user  = @p_user
+     AND tas~trstatus = 'D'
+   ORDER BY tas~trkorr.
 
-  ls_obj_type-low = 'PROG'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'CLAS'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'ENHO'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'FUNC'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'FUGR'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'INDX'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'INTF'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'TABL'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'DDLS'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'INCL'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'DOMA'. APPEND ls_obj_type TO lt_obj_types.
-  ls_obj_type-low = 'DTEL'. APPEND ls_obj_type TO lt_obj_types.
-
-* Busca requests Workbench liberadas que contenham ao menos um objeto
-* registrado na TADIR com tipo mapeado
-  SELECT DISTINCT req~trkorr AS request,
-                  txt~as4text AS description
-    FROM e070 AS req
-    INNER JOIN e071 AS obj
-      ON req~trkorr = obj~trkorr
-    INNER JOIN tadir AS dir
-      ON  obj~pgmid    = dir~pgmid
-      AND obj~object   = dir~object
-      AND obj~obj_name = dir~obj_name
-    LEFT OUTER JOIN e07t AS txt
-      ON req~trkorr = txt~trkorr
-   WHERE req~trfunction = 'K'
-     AND req~trstatus   = 'D'
-     AND dir~object     IN @lt_obj_types
-   ORDER BY req~trkorr
-    INTO TABLE @lt_requests.
-
-  IF sy-subrc <> 0 OR lt_requests IS INITIAL.
-    MESSAGE 'Nenhuma request encontrada.' TYPE 'S' DISPLAY LIKE 'W'.
+  IF lt_tasks IS INITIAL.
+    MESSAGE 'Nenhuma task modificável encontrada para o usuário.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_requests INTO ls_request.
-    CLEAR lv_line.
-    IF ls_request-description IS INITIAL.
-      lv_line = ls_request-request.
+  " Descobre quais tasks possuem objetos em E071
+  SELECT DISTINCT trkorr
+    FROM e071
+    INTO TABLE @lt_with_objects
+    FOR ALL ENTRIES IN @lt_tasks
+   WHERE trkorr = @lt_tasks-task.
+
+  " Marca se a task tem objetos ou está vazia
+  LOOP AT lt_tasks INTO ls_task.
+    READ TABLE lt_with_objects
+      WITH KEY table_line = ls_task-task
+      TRANSPORTING NO FIELDS.
+
+    IF sy-subrc = 0.
+      ls_task-has_objects = 'X'.
     ELSE.
-      lv_line = |{ ls_request-request };{ ls_request-description }|.
+      CLEAR ls_task-has_objects.
     ENDIF.
+
+    MODIFY lt_tasks FROM ls_task.
+  ENDLOOP.
+
+  " Cabeçalho do arquivo
+  APPEND 'TASK;REQUEST_PAI;OWNER;TEM_OBJETO;DESCRICAO_TASK;DESCRICAO_REQUEST' TO lt_output.
+
+  " Monta saída
+  LOOP AT lt_tasks INTO ls_task.
+
+    IF ls_task-has_objects = 'X'.
+      lv_status = 'SIM'.
+    ELSE.
+      lv_status = 'NAO'.
+    ENDIF.
+
+    lv_line = |{ ls_task-task };{ ls_task-request };{ ls_task-owner };{ lv_status };{ ls_task-task_text };{ ls_task-request_text }|.
+
     APPEND lv_line TO lt_output.
   ENDLOOP.
 
-  lv_fullpath = 'C:\temp\workbench_requests.txt'.
+  lv_fullpath = p_file.
 
   CALL METHOD cl_gui_frontend_services=>gui_download
     EXPORTING
@@ -103,7 +126,7 @@ START-OF-SELECTION.
       OTHERS                  = 22.
 
   IF sy-subrc = 0.
-    MESSAGE |{ lines( lt_output ) } requests baixadas em { lv_fullpath }| TYPE 'S'.
+    MESSAGE |{ lines( lt_tasks ) } tasks baixadas em { lv_fullpath }| TYPE 'S'.
   ELSE.
     MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
   ENDIF.
