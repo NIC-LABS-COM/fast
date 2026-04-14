@@ -1,47 +1,78 @@
 *&---------------------------------------------------------------------*
-*& Report  Z_BUSCA_REQUEST
+*& Report Z_BUSCA_REQUEST
 *&---------------------------------------------------------------------*
 REPORT z_busca_request.
 
-TYPES: BEGIN OF ty_task,
-         task          TYPE e070-trkorr,
-         request_pai   TYPE e070-strkorr,
-         descricao_req TYPE e07t-as4text,
-       END OF ty_task.
+TYPES: BEGIN OF ty_request,
+         request     TYPE e070-trkorr,
+         description TYPE e07t-as4text,
+       END OF ty_request.
 
-DATA: lt_tasks    TYPE STANDARD TABLE OF ty_task,
-      ls_task     TYPE ty_task,
+DATA: lt_requests TYPE STANDARD TABLE OF ty_request,
+      ls_request  TYPE ty_request,
       lt_output   TYPE STANDARD TABLE OF string,
-      lv_line     TYPE string,
-      lv_fullpath TYPE string.
+      lv_fullpath TYPE string,
+      lv_line     TYPE string.
+
+DATA: lt_obj_types TYPE RANGE OF tadir-object,
+      ls_obj_type  LIKE LINE OF lt_obj_types.
 
 START-OF-SELECTION.
 
-  SELECT tas~trkorr      AS task,
-         tas~strkorr     AS request_pai,
-         txt_req~as4text AS descricao_req
-    FROM e070 AS tas
-    LEFT OUTER JOIN e07t AS txt_req
-      ON txt_req~trkorr = tas~strkorr
-     AND txt_req~langu  = @sy-langu
-    INTO TABLE @lt_tasks
-   WHERE tas~strkorr IS NOT INITIAL
-     AND tas~as4user  = @sy-uname
-     AND tas~trstatus = 'D'
-   ORDER BY tas~trkorr.
+  " Monta range com os tipos de objeto relevantes (conforme TADIR-OBJECT)
+  CLEAR ls_obj_type.
+  ls_obj_type-sign   = 'I'.
+  ls_obj_type-option = 'EQ'.
 
-  IF lt_tasks IS INITIAL.
-    MESSAGE 'Nenhuma task encontrada para o usuário logado.' TYPE 'S' DISPLAY LIKE 'W'.
+  ls_obj_type-low = 'PROG'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'CLAS'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'ENHO'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'FUNC'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'FUGR'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'INDX'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'INTF'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'TABL'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'DDLS'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'INCL'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'DOMA'. APPEND ls_obj_type TO lt_obj_types.
+  ls_obj_type-low = 'DTEL'. APPEND ls_obj_type TO lt_obj_types.
+
+  " Busca requests Workbench liberadas
+  " Agora também traz requests sem item mapeado / sem correspondência na TADIR
+  SELECT DISTINCT
+         req~trkorr  AS request,
+         txt~as4text AS description
+    FROM e070 AS req
+    LEFT OUTER JOIN e071 AS obj
+      ON req~trkorr = obj~trkorr
+    LEFT OUTER JOIN tadir AS dir
+      ON obj~pgmid    = dir~pgmid
+     AND obj~object   = dir~object
+     AND obj~obj_name = dir~obj_name
+    LEFT OUTER JOIN e07t AS txt
+      ON req~trkorr = txt~trkorr
+   WHERE req~trfunction = 'K'
+     AND req~trstatus   = 'D'
+     AND (
+            dir~object IN @lt_obj_types
+         OR obj~trkorr IS INITIAL
+         OR dir~object IS INITIAL
+         )
+   ORDER BY req~trkorr
+    INTO TABLE @lt_requests.
+
+  IF sy-subrc <> 0 OR lt_requests IS INITIAL.
+    MESSAGE 'Nenhuma request encontrada.' TYPE 'S' DISPLAY LIKE 'W'.
     RETURN.
   ENDIF.
 
-  LOOP AT lt_tasks INTO ls_task.
+  LOOP AT lt_requests INTO ls_request.
     CLEAR lv_line.
 
-    IF ls_task-descricao_req IS INITIAL.
-      lv_line = |{ ls_task-task } ; { ls_task-request_pai }|.
+    IF ls_request-description IS INITIAL.
+      lv_line = ls_request-request.
     ELSE.
-      lv_line = |{ ls_task-task } ; { ls_task-request_pai }: { ls_task-descricao_req }|.
+      lv_line = |{ ls_request-request };{ ls_request-description }|.
     ENDIF.
 
     APPEND lv_line TO lt_output.
@@ -80,7 +111,7 @@ START-OF-SELECTION.
       OTHERS                  = 22.
 
   IF sy-subrc = 0.
-    MESSAGE |{ lines( lt_output ) } tasks baixadas em { lv_fullpath }| TYPE 'S'.
+    MESSAGE |{ lines( lt_output ) } requests baixadas em { lv_fullpath }| TYPE 'S'.
   ELSE.
     MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
   ENDIF.
