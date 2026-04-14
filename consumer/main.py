@@ -6,14 +6,45 @@ Escuta duas filas em paralelo:
   2. q.usiminas.v1       — arquitetura orientada a eventos (routing key + payload tipado)
 """
 
+import os
+
 from .config import (
     QUEUE_COMMANDS, QUEUE_RESPONSES, QUEUES_V1,
     EXCHANGE_V1, ROUTING_KEY_BIND, RABBITMQ_HOST,
+    VBS_DIR, VBS_BY_ROUTING_KEY,
 )
 from .connection import get_rabbitmq_connection
 from .logger import log
 from .legacy import callback_legacy
 from .v1 import callback_v1
+
+
+def _check_vbs_files() -> None:
+    log(f"VBS_DIR: {VBS_DIR}")
+    mapped = set(VBS_BY_ROUTING_KEY.values())
+
+    # Arquivos presentes fisicamente no diretório
+    try:
+        found = {f for f in os.listdir(VBS_DIR) if f.lower().endswith(".vbs")}
+    except FileNotFoundError:
+        log(f"  [ERRO] Diretório VBS não encontrado: {VBS_DIR}")
+        return
+
+    # Mapeados e presentes
+    ok = sorted(mapped & found)
+    # Mapeados mas ausentes
+    missing = sorted(mapped - found)
+    # Presentes mas sem routing key (apenas frontend ou extra)
+    extra = sorted(found - mapped)
+
+    for name in ok:
+        log(f"  [OK]       {name}")
+    for name in missing:
+        log(f"  [FALTANDO] {name}")
+    for name in extra:
+        log(f"  [EXTRA]    {name}  (sem routing key no consumer)")
+
+    log(f"VBS: {len(ok)} mapeados OK, {len(missing)} faltando, {len(extra)} extras.")
 
 
 def main() -> None:
@@ -25,6 +56,8 @@ def main() -> None:
     log(f"Binding v1    : {ROUTING_KEY_BIND}")
     log(f"Fila respostas: {QUEUE_RESPONSES}")
     log(f"Host          : {RABBITMQ_HOST}")
+    log("##################################################")
+    _check_vbs_files()
     log("##################################################")
 
     connection = get_rabbitmq_connection()

@@ -1,6 +1,7 @@
 """Constantes e configuracao do Consumer RabbitMQ."""
 
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -37,22 +38,32 @@ QUEUES_V1 = [QUEUE_V1]
 EXCHANGE_V1      = "x.to-client.topic"
 ROUTING_KEY_BIND = "usiminas.req.#.v1"
 
-# Mapeamento: routing_key -> URL do VBS no GitHub
+# Diretório local com os scripts VBS empacotados junto ao executável
+def _get_vbs_dir() -> str:
+    if getattr(sys, "frozen", False):
+        # Executável PyInstaller — arquivos extraídos em sys._MEIPASS
+        return os.path.join(sys._MEIPASS, "vbs")
+    # Desenvolvimento — pasta vbs/ na raiz do projeto
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "vbs")
+
+VBS_DIR = _get_vbs_dir()
+
+# Mapeamento: routing_key -> nome do arquivo VBS local
 VBS_BY_ROUTING_KEY: dict[str, str] = {
-    "command.fix.v1":      "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptEditarSE38.vbs",
-    "command.revert.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptEditarSE38.vbs",
-    "command.create.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/ScriptCriarSE38.vbs",
-    "command.buscar.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscarProgSap.vbs",
-    "query.read.file.v1":  "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/baixarArquivoSAP.vbs",
-    "query.requests.v1":      "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscarRequests.vbs",
-    "query.all.files.v1":     "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaReports.vbs",
-    "query.all.packages.v1":          "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaPacotes.vbs",
-    "query.versions.metadata.v1":     "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaVersionsMetadata.vbs",
-    "query.file.category.v1":         "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaCategoryByFileName.vbs",
-    "query.request.files.v1":         "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaAbapFilesByRequest.vbs",
-    "query.request.description.v1":   "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaRequestDescription.vbs",
-    "query.read.from.version.v1":      "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscaConteudoPorVersao.vbs",
-    "query.search.v1":                    "https://raw.githubusercontent.com/NIC-LABS-COM/fast/main/vbs/buscarObjetos.vbs",
+    "command.fix.v1":             "ScriptEditarSE38.vbs",
+    "command.revert.v1":          "ScriptEditarSE38.vbs",
+    "command.create.v1":          "ScriptCriarSE38.vbs",
+    "command.buscar.v1":          "buscarProgSap.vbs",
+    "query.read.file.v1":         "baixarArquivoSAP.vbs",
+    "query.requests.v1":          "buscarRequests.vbs",
+    "query.all.files.v1":         "buscaReports.vbs",
+    "query.all.packages.v1":      "buscaPacotes.vbs",
+    "query.versions.metadata.v1": "buscaVersionsMetadata.vbs",
+    "query.file.category.v1":     "buscaCategoryByFileName.vbs",
+    "query.request.files.v1":     "buscaAbapFilesByRequest.vbs",
+    "query.request.description.v1": "buscaRequestDescription.vbs",
+    "query.read.from.version.v1": "buscaConteudoPorVersao.vbs",
+    "query.search.v1":            "buscarObjetos.vbs",
 }
 
 # Routing keys que sao queries (retornam dados estruturados)
@@ -74,7 +85,6 @@ ROUTING_KEY_PREFIX = "usiminas.req."
 # ------------------------------------------------------------------ #
 #  Diretórios e Log
 # ------------------------------------------------------------------ #
-TEMP_DIR = os.getenv("TEMP", os.getcwd())
 LOG_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Log")
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, f"consumer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt")

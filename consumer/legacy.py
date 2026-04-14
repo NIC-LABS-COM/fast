@@ -8,7 +8,7 @@ import pika
 
 from .config import QUEUE_RESPONSES
 from .logger import log, is_already_exists_error
-from .vbs import download_vbs, execute_vbs
+from .vbs import get_vbs_path, execute_vbs
 
 
 def publish_response(channel, action: str, object_name: str, status: str,
@@ -59,10 +59,11 @@ def process_legacy_message(channel, body_str: str) -> None:
                          "URL do VBS vazia na mensagem.", correlation_id)
         return
 
-    vbs_path = download_vbs(vbs_url)
+    vbs_filename = vbs_url.split("/")[-1]
+    vbs_path = get_vbs_path(vbs_filename)
     if vbs_path is None:
         publish_response(channel, action, object_name, "erro",
-                         "Falha no download do VBS.", correlation_id)
+                         f"VBS '{vbs_filename}' nao encontrado localmente.", correlation_id)
         return
 
     ok, details = execute_vbs(vbs_path, args)

@@ -1,32 +1,21 @@
-"""Download e execucao de scripts VBS."""
+"""Resolucao e execucao de scripts VBS locais."""
 
 import os
 import subprocess
 import traceback
-import urllib.request
-import urllib.error
 
-from .config import TEMP_DIR
+from .config import VBS_DIR
 from .logger import log
 
 
-def download_vbs(url: str) -> str | None:
-    filename   = url.split("/")[-1]
-    local_path = os.path.join(TEMP_DIR, filename)
-    log(f"Baixando VBS: {url}")
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url), timeout=30) as resp:
-            content = resp.read()
-        with open(local_path, "wb") as f:
-            f.write(content)
-        log(f"VBS salvo em: {local_path} ({len(content)} bytes)")
-        return local_path
-    except urllib.error.URLError as e:
-        log(f"Erro de URL no download: {e}")
+def get_vbs_path(filename: str) -> str | None:
+    """Retorna o caminho absoluto do VBS dentro da pasta local empacotada."""
+    path = os.path.join(VBS_DIR, filename)
+    if not os.path.exists(path):
+        log(f"VBS nao encontrado: {path}")
         return None
-    except Exception:
-        log(f"Erro inesperado no download: {traceback.format_exc()}")
-        return None
+    log(f"VBS local: {path}")
+    return path
 
 
 def execute_vbs(vbs_path: str, args: list[str]) -> tuple[bool, str]:

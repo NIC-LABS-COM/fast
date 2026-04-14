@@ -220,7 +220,27 @@ CheckSapError "Salvar programa"
 ' Ativar
 session.findById("wnd[0]").sendVKey 27
 WScript.Sleep 1500
+
+' Se surgir popup de confirmacao (nao de erro), confirma com Enter
+On Error Resume Next
+Dim wndConfirm
+Set wndConfirm = session.findById("wnd[1]")
+If Not wndConfirm Is Nothing Then
+    Dim wndConfirmTitle
+    wndConfirmTitle = LCase(wndConfirm.Text)
+    If InStr(wndConfirmTitle, "erro") = 0 And InStr(wndConfirmTitle, "error") = 0 _
+       And InStr(wndConfirmTitle, "syntax") = 0 Then
+        wndConfirm.sendVKey 0
+        WScript.Sleep 800
+    End If
+End If
+On Error GoTo 0
+
 CheckActivationPopup "Ativar programa"
 CheckSapError "Ativar programa"
+
+' Volta para a tela inicial do SAP
+session.findById("wnd[0]/tbar[0]/okcd").text = "/n12365"
+session.findById("wnd[0]").sendVKey 0
 
 WScript.Echo "Programa " & programName & " criado com sucesso."
