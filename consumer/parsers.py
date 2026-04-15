@@ -114,7 +114,7 @@ def parse_abap_files_by_request_txt(raw_content: str) -> list[dict]:
         if key not in groups:
             groups[key] = []
         if task_id:
-            groups[key].append({"request": task_id, "task": task_type})
+            groups[key].append({"taskId": task_id, "taskType": task_type})
 
     results: list[dict] = []
     for (fn, cat), tasks in groups.items():

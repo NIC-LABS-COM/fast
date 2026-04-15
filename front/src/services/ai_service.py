@@ -56,6 +56,18 @@ class AIService:
         Retorna dict com a proposta de tabela.
         Levanta excecao em caso de erro HTTP ou JSON invalido.
         """
+        # === LOG ENTRADA: Estado enviado para a IA ===
+        logger.info("=" * 60)
+        logger.info("[IA ENTRADA] Prompt do usuario: %s", prompt)
+        logger.info("[IA ENTRADA] Estado atual (state):")
+        logger.info(json.dumps(state, ensure_ascii=False, indent=2))
+        logger.info("=" * 60)
+        print("\n" + "=" * 60)
+        print("[IA ENTRADA] Prompt do usuario:", prompt)
+        print("[IA ENTRADA] Estado atual (state):")
+        print(json.dumps(state, ensure_ascii=False, indent=2))
+        print("=" * 60 + "\n")
+
         payload = {
             "model": OPENAI_MODEL,
             "messages": [
@@ -85,7 +97,19 @@ class AIService:
 
         content = rd["choices"][0]["message"]["content"].strip()
         content = self._strip_markdown(content)
-        return json.loads(content)
+        result = json.loads(content)
+
+        # === LOG SAIDA: Resposta da IA ===
+        logger.info("=" * 60)
+        logger.info("[IA SAIDA] JSON retornado pela IA:")
+        logger.info(json.dumps(result, ensure_ascii=False, indent=2))
+        logger.info("=" * 60)
+        print("\n" + "=" * 60)
+        print("[IA SAIDA] JSON retornado pela IA:")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print("=" * 60 + "\n")
+
+        return result
 
     @staticmethod
     def _strip_markdown(content: str) -> str:

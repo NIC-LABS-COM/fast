@@ -383,9 +383,10 @@ def process_query_read_file(channel, payload: dict, vbs_filename: str) -> None:
     ok, details = execute_vbs(vbs_path, [file_name])
 
     if ok:
+        content = details.replace("\\n", "\n")
         log(f"[QUERY] SUCESSO: query.read.file.v1 - {file_name}")
         publish_read_file_response(
-            channel, reply_to, {"fileName": file_name, "content": details}, correlation_id
+            channel, reply_to, {"fileName": file_name, "content": content}, correlation_id
         )
     else:
         log(f"[QUERY] FALHA: query.read.file.v1 - {file_name}: {details}")

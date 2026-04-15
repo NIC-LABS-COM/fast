@@ -1,0 +1,86 @@
+*&---------------------------------------------------------------------*
+*& Report  Z_BUSCA_TESK
+*&---------------------------------------------------------------------*
+REPORT z_busca_tesk.
+
+TYPES: BEGIN OF ty_task,
+         task          TYPE e070-trkorr,
+         request_pai   TYPE e070-strkorr,
+         descricao_req TYPE e07t-as4text,
+       END OF ty_task.
+
+DATA: lt_tasks    TYPE STANDARD TABLE OF ty_task,
+      ls_task     TYPE ty_task,
+      lt_output   TYPE STANDARD TABLE OF string,
+      lv_line     TYPE string,
+      lv_fullpath TYPE string.
+
+START-OF-SELECTION.
+
+  SELECT tas~trkorr      AS task,
+         tas~strkorr     AS request_pai,
+         txt_req~as4text AS descricao_req
+    FROM e070 AS tas
+    LEFT OUTER JOIN e07t AS txt_req
+      ON txt_req~trkorr = tas~strkorr
+     AND txt_req~langu  = @sy-langu
+    INTO TABLE @lt_tasks
+   WHERE tas~strkorr IS NOT INITIAL
+     AND tas~as4user  = @sy-uname
+     AND tas~trstatus = 'D'
+   ORDER BY tas~trkorr.
+
+  IF lt_tasks IS INITIAL.
+    MESSAGE 'Nenhuma task encontrada para o usuário logado.' TYPE 'S' DISPLAY LIKE 'W'.
+    RETURN.
+  ENDIF.
+
+  LOOP AT lt_tasks INTO ls_task.
+    CLEAR lv_line.
+
+    IF ls_task-descricao_req IS INITIAL.
+      lv_line = |{ ls_task-task } ; { ls_task-request_pai }|.
+    ELSE.
+      lv_line = |{ ls_task-task } ; { ls_task-request_pai }: { ls_task-descricao_req }|.
+    ENDIF.
+
+    APPEND lv_line TO lt_output.
+  ENDLOOP.
+
+  lv_fullpath = 'C:\temp\workbench_requests.txt'.
+
+  CALL METHOD cl_gui_frontend_services=>gui_download
+    EXPORTING
+      filename                = lv_fullpath
+      filetype                = 'ASC'
+    CHANGING
+      data_tab                = lt_output
+    EXCEPTIONS
+      file_write_error        = 1
+      no_batch                = 2
+      gui_refuse_filetransfer = 3
+      invalid_type            = 4
+      no_authority            = 5
+      unknown_error           = 6
+      header_not_allowed      = 7
+      separator_not_allowed   = 8
+      filesize_not_allowed    = 9
+      header_too_long         = 10
+      dp_error_create         = 11
+      dp_error_send           = 12
+      dp_error_write          = 13
+      unknown_dp_error        = 14
+      access_denied           = 15
+      dp_out_of_memory        = 16
+      disk_full               = 17
+      dp_timeout              = 18
+      file_not_found          = 19
+      dataprovider_exception  = 20
+      control_flush_error     = 21
+      OTHERS                  = 22.
+
+  IF sy-subrc = 0.
+    MESSAGE |{ lines( lt_output ) } tasks baixadas em { lv_fullpath }| TYPE 'S'.
+  ELSE.
+    MESSAGE 'Erro ao fazer download do arquivo.' TYPE 'E'.
+  ENDIF.

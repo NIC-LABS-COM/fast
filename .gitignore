@@ -8,3 +8,4 @@ dist/*
 *.spec
 front/log
 config.py
+.env*

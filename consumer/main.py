@@ -10,7 +10,7 @@ import os
 
 from .config import (
     QUEUE_COMMANDS, QUEUE_RESPONSES, QUEUES_V1,
-    EXCHANGE_V1, ROUTING_KEY_BIND, RABBITMQ_HOST,
+    EXCHANGE_V1, ROUTING_KEY_BIND, BROKER_HOST,
     VBS_DIR, VBS_BY_ROUTING_KEY,
 )
 from .connection import get_rabbitmq_connection
@@ -55,7 +55,7 @@ def main() -> None:
     log(f"Exchange v1   : {EXCHANGE_V1}")
     log(f"Binding v1    : {ROUTING_KEY_BIND}")
     log(f"Fila respostas: {QUEUE_RESPONSES}")
-    log(f"Host          : {RABBITMQ_HOST}")
+    log(f"Host          : {BROKER_HOST}")
     log("##################################################")
     _check_vbs_files()
     log("##################################################")

@@ -24,10 +24,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 LOG_DIR = os.path.join(BASE_DIR, "Log")
 
 # RabbitMQ
-RABBITMQ_HOST = os.environ.get("RABBITMQ_HOST", "jackal.rmq.cloudamqp.com")
-RABBITMQ_USER = os.environ.get("RABBITMQ_USER", "rhrstugr")
-RABBITMQ_PASS = os.environ.get("RABBITMQ_PASS", "")
-RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST", "rhrstugr")
+BROKER_HOST     = os.environ.get("BROKER_HOST",     "rabbitmq.nic-labs.com")
+BROKER_PORT     = int(os.environ.get("BROKER_PORT", "5671"))
+BROKER_USER     = os.environ.get("BROKER_USER",     "nicaiuser")
+BROKER_PASSWORD = os.environ.get("BROKER_PASSWORD", "")
+BROKER_VHOST    = os.environ.get("BROKER_VHOST",    "/")
+BROKER_TIMEOUT  = int(os.environ.get("BROKER_TIMEOUT", "150000"))
 QUEUE_COMMANDS = "queue_vpn_usiminas"
 QUEUE_RESPONSES = "queue_vpn_respostas"
 

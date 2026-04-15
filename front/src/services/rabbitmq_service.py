@@ -15,10 +15,12 @@ import pika
 from core.config import (
     QUEUE_COMMANDS,
     QUEUE_RESPONSES,
-    RABBITMQ_HOST,
-    RABBITMQ_PASS,
-    RABBITMQ_USER,
-    RABBITMQ_VHOST,
+    BROKER_HOST,
+    BROKER_PORT,
+    BROKER_PASSWORD,
+    BROKER_USER,
+    BROKER_VHOST,
+    BROKER_TIMEOUT,
 )
 
 logger = logging.getLogger("sap_publisher")
@@ -28,14 +30,18 @@ class RabbitMQService:
     """Encapsula todas as operacoes com o broker RabbitMQ."""
 
     def _get_connection(self) -> pika.BlockingConnection:
-        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
-        context = ssl.create_default_context()
+        credentials = pika.PlainCredentials(BROKER_USER, BROKER_PASSWORD)
+
+        ssl_context = ssl.create_default_context()
+        ssl_options = pika.SSLOptions(ssl_context, BROKER_HOST)
+
         params = pika.ConnectionParameters(
-            host=RABBITMQ_HOST,
-            port=5671,
-            virtual_host=RABBITMQ_VHOST,
+            host=BROKER_HOST,
+            port=BROKER_PORT,
+            virtual_host=BROKER_VHOST,
             credentials=credentials,
-            ssl_options=pika.SSLOptions(context),
+            ssl_options=ssl_options,
+            blocked_connection_timeout=BROKER_TIMEOUT / 1000,
         )
         return pika.BlockingConnection(params)
 
