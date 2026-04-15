@@ -84,7 +84,7 @@ arrRequests = Split(argRequests, ",")
 
 ' Preenche o primeiro valor no campo LOW
 On Error Resume Next
-session.findById("wnd[0]/usr/ctxtP_REQ-LOW").Text = Trim(arrRequests(0))
+session.findById("wnd[0]/usr/ctxtS_REQ-LOW").Text = Trim(arrRequests(0))
 Err.Clear
 On Error GoTo 0
 
@@ -92,7 +92,7 @@ On Error GoTo 0
 If UBound(arrRequests) > 0 Then
     On Error Resume Next
     ' Clica no botao de multipla selecao (icone amarelo ao lado do campo)
-    session.findById("wnd[0]/usr/btn%_P_REQ_%_APP_%-VALU_PUSH").press
+    session.findById("wnd[0]/usr/btn%_S_REQ_%_APP_%-VALU_PUSH").press
     WScript.Sleep 500
 
     Dim j
