@@ -21,7 +21,8 @@ def get_vbs_path(filename: str) -> str | None:
 def execute_vbs(vbs_path: str, args: list[str]) -> tuple[bool, str]:
     if not os.path.exists(vbs_path):
         return False, f"Arquivo nao encontrado: {vbs_path}"
-    cmd = ["cscript.exe", "//nologo", vbs_path, *args]
+    cscript = os.path.join(os.environ.get("SYSTEMROOT", r"C:\Windows"), "System32", "cscript.exe")
+    cmd = [cscript, "//nologo", vbs_path, *args]
     log(f"Executando: {cmd}")
     try:
         result = subprocess.run(cmd, capture_output=True)

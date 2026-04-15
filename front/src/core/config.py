@@ -25,7 +25,7 @@ LOG_DIR = os.path.join(BASE_DIR, "Log")
 
 # RabbitMQ
 BROKER_HOST     = os.environ.get("BROKER_HOST",     "rabbitmq.nic-labs.com")
-BROKER_PORT     = int(os.environ.get("BROKER_PORT", "5672"))
+BROKER_PORT     = int(os.environ.get("BROKER_PORT", "5671"))
 BROKER_USER     = os.environ.get("BROKER_USER",     "nicaiuser")
 BROKER_PASSWORD = os.environ.get("BROKER_PASSWORD", "")
 BROKER_VHOST    = os.environ.get("BROKER_VHOST",    "/")

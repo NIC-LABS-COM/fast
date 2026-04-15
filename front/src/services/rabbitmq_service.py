@@ -4,6 +4,7 @@ Responsavel por publicar comandos e escutar respostas.
 """
 import json
 import logging
+import ssl
 import threading
 import time
 import traceback
@@ -30,11 +31,16 @@ class RabbitMQService:
 
     def _get_connection(self) -> pika.BlockingConnection:
         credentials = pika.PlainCredentials(BROKER_USER, BROKER_PASSWORD)
+
+        ssl_context = ssl.create_default_context()
+        ssl_options = pika.SSLOptions(ssl_context, BROKER_HOST)
+
         params = pika.ConnectionParameters(
             host=BROKER_HOST,
             port=BROKER_PORT,
             virtual_host=BROKER_VHOST,
             credentials=credentials,
+            ssl_options=ssl_options,
             blocked_connection_timeout=BROKER_TIMEOUT / 1000,
         )
         return pika.BlockingConnection(params)
