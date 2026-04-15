@@ -17,7 +17,7 @@ Dim i, fso, filePath, fRead, conteudo
 Dim argRequests, arrRequests
 
 Const REPORT_NAME = "Z_GET_ABAP_FILES_BY_REQUEST"
-Const FILE_PATH   = "C:\temp\request_files.txt"
+Const FILE_PATH   = "C:\temp\request_objects.txt"
 
 ' ---- Sub para verificar erro na status bar do SAP ----
 Sub CheckSapError(stepName)
