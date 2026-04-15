@@ -83,8 +83,19 @@ CheckSapError "Abrir report"
 arrRequests = Split(argRequests, ",")
 
 ' Preenche o primeiro valor no campo LOW
+' Tenta ctxt (campo com F4) e txt (campo texto puro)
 On Error Resume Next
 session.findById("wnd[0]/usr/ctxtS_REQ-LOW").Text = Trim(arrRequests(0))
+If Err.Number <> 0 Then
+    Err.Clear
+    session.findById("wnd[0]/usr/txtS_REQ-LOW").Text = Trim(arrRequests(0))
+End If
+If Err.Number <> 0 Then
+    Err.Clear
+    On Error GoTo 0
+    WScript.StdErr.Write "Campo S_REQ nao encontrado na tela do report"
+    WScript.Quit 1
+End If
 Err.Clear
 On Error GoTo 0
 
