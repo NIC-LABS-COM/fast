@@ -178,14 +178,15 @@ CLASS lcl_version_service IMPLEMENTATION.
                 'T' && iv_time+0(2) && ':' && iv_time+2(2) && ':' && iv_time+4(2).
   ENDMETHOD.
 
-  METHOD read_versions_program.
-    DATA: ls_response  TYPE ty_response,
-          lv_prog_name TYPE sy-repid,
-          lv_count     TYPE i,
-          lv_udat      TYPE reposrc-udat,
-          lv_utime     TYPE reposrc-utime,
-          lv_versno    TYPE i,
-          lv_visual    TYPE n LENGTH 5.
+   METHOD read_versions_program.
+    DATA: ls_response      TYPE ty_response,
+          lv_prog_name     TYPE sy-repid,
+          lv_udat_active   TYPE reposrc-udat,
+          lv_utime_active  TYPE reposrc-utime,
+          lv_udat_inactive TYPE reposrc-udat,
+          lv_utime_inactive TYPE reposrc-utime,
+          lv_versno        TYPE i,
+          lv_visual        TYPE n LENGTH 5.
 
     TYPES: BEGIN OF ty_join,
              versno  TYPE vrsd-versno,
@@ -203,62 +204,102 @@ CLASS lcl_version_service IMPLEMENTATION.
     lv_prog_name = iv_prog_name.
     TRANSLATE lv_prog_name TO UPPER CASE.
 
-    " Versões históricas ordenadas da mais ANTIGA para a mais NOVA
-    " (o número visual será atribuído nessa ordem: 1, 2, 3...)
-    SELECT vrsd~versno vrsd~korrnum vrsd~datum vrsd~zeit e07t~as4text
-      INTO CORRESPONDING FIELDS OF TABLE lt_dados
+    "------------------------------------------------------------
+    " 1) Histórico de versões (VRSD)
+    "------------------------------------------------------------
+    SELECT vrsd~versno,
+           vrsd~korrnum,
+           vrsd~datum,
+           vrsd~zeit,
+           e07t~as4text
+      INTO CORRESPONDING FIELDS OF TABLE @lt_dados
       FROM vrsd
-      LEFT OUTER JOIN e07t ON e07t~trkorr = vrsd~korrnum
-                          AND e07t~langu  = sy-langu
+      LEFT OUTER JOIN e07t
+        ON e07t~trkorr = vrsd~korrnum
+       AND e07t~langu  = @sy-langu
       WHERE vrsd~objtype = 'REPS'
-        AND vrsd~objname = lv_prog_name
-      ORDER BY vrsd~datum ASCENDING
-               vrsd~zeit  ASCENDING.
+        AND vrsd~objname = @lv_prog_name
+      ORDER BY vrsd~datum DESCENDING,
+               vrsd~zeit  DESCENDING.
 
-    " Atribui número visual (1, 2, 3...) e depois inverte para DESC
-    lv_versno = 0.
+    lv_versno = 2.
+
     LOOP AT lt_dados INTO ls_dados.
       lv_versno = lv_versno + 1.
       lv_visual = lv_versno.
 
       CLEAR ls_response.
       ls_response-id        = lv_visual.
-      ls_response-title     = ls_dados-as4text.
-      ls_response-updated   = format_iso8601( iv_date = ls_dados-datum iv_time = ls_dados-zeit ).
+      ls_response-title     = COND string(
+                                WHEN ls_dados-as4text IS NOT INITIAL
+                                THEN ls_dados-as4text
+                                ELSE |Versão histórica { ls_dados-versno }| ).
+      ls_response-updated   = format_iso8601(
+                                iv_date = ls_dados-datum
+                                iv_time = ls_dados-zeit ).
       ls_response-request   = ls_dados-korrnum.
       ls_response-file_name = lv_prog_name.
       ls_response-category  = category_to_label( iv_category ).
       APPEND ls_response TO rt_result.
     ENDLOOP.
 
-    " Ativo fica por cima, como 00000
-    SELECT SINGLE udat utime
+    "------------------------------------------------------------
+    " 2) Versão ativa (REPOSRC - A)
+    "------------------------------------------------------------
+    CLEAR: lv_udat_active, lv_utime_active.
+
+    SELECT SINGLE udat,
+                  utime
       FROM reposrc
-      INTO (lv_udat, lv_utime)
-      WHERE progname = lv_prog_name
+      INTO (@lv_udat_active, @lv_utime_active)
+      WHERE progname = @lv_prog_name
         AND r3state  = 'A'.
 
     IF sy-subrc = 0.
       CLEAR ls_response.
-      ls_response-id        = '00000'.
+      ls_response-id        = '00001'.
       ls_response-title     = 'Versão ativa'.
       ls_response-file_name = lv_prog_name.
       ls_response-category  = category_to_label( iv_category ).
       ls_response-request   = ''.
-      ls_response-updated   = format_iso8601( iv_date = lv_udat iv_time = lv_utime ).
-      INSERT ls_response INTO rt_result INDEX 1.
+      ls_response-updated   = format_iso8601(
+                                iv_date = lv_udat_active
+                                iv_time = lv_utime_active ).
+      APPEND ls_response TO rt_result.
     ENDIF.
 
-    " Reordena: ativo no topo, depois histórico do mais novo ao mais antigo
-    SORT rt_result BY id DESCENDING.
+    "------------------------------------------------------------
+    " 3) Versão modificada/inativa (REPOSRC - I)
+    "------------------------------------------------------------
+    CLEAR: lv_udat_inactive, lv_utime_inactive.
 
-    " Garante que 00000 (ativo) fique no topo apesar do sort
-    " (como '00000' é numericamente o menor, precisamos trazê-lo pra frente)
-    LOOP AT rt_result INTO ls_response WHERE id = '00000'.
-      DELETE rt_result INDEX sy-tabix.
-      INSERT ls_response INTO rt_result INDEX 1.
-      EXIT.
-    ENDLOOP.
+    SELECT SINGLE udat,
+                  utime
+      FROM reposrc
+      INTO (@lv_udat_inactive, @lv_utime_inactive)
+      WHERE progname = @lv_prog_name
+        AND r3state  = 'I'.
+
+    IF sy-subrc = 0.
+      CLEAR ls_response.
+      ls_response-id        = '00000'.
+      ls_response-title     = 'Versão modificada'.
+      ls_response-file_name = lv_prog_name.
+      ls_response-category  = category_to_label( iv_category ).
+      ls_response-request   = ''.
+      ls_response-updated   = format_iso8601(
+                                iv_date = lv_udat_inactive
+                                iv_time = lv_utime_inactive ).
+      APPEND ls_response TO rt_result.
+    ENDIF.
+
+    "------------------------------------------------------------
+    " 4) Ordem final
+    "    00000 = Modificada
+    "    00001 = Ativa
+    "    00002+ = Históricas
+    "------------------------------------------------------------
+    SORT rt_result BY id ASCENDING.
 
   ENDMETHOD.
 
