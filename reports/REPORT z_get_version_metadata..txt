@@ -301,11 +301,10 @@ CLASS lcl_version_service IMPLEMENTATION.
     ENDIF.
 
     "------------------------------------------------------------
-    " 4) Ordem final — decrescente por updated
-    "    Mais recente no topo (modificada/ativa primeiro,
-    "    depois históricas da mais nova à mais antiga)
+    " 4) Ordem final — crescente por id
+    "    00000 = Modificada, 00001 = Ativa, 00003+ = Históricas
     "------------------------------------------------------------
-    SORT rt_result BY updated DESCENDING.
+    SORT rt_result BY id ASCENDING.
 
   ENDMETHOD.
 
