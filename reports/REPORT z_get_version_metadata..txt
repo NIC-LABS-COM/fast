@@ -55,6 +55,13 @@ CLASS lcl_version_service DEFINITION FINAL.
       RETURNING
         VALUE(rv_category) TYPE char4.
 
+    CLASS-METHODS format_iso8601
+      IMPORTING
+        iv_date          TYPE sy-datum
+        iv_time          TYPE sy-uzeit
+      RETURNING
+        VALUE(rv_result) TYPE string.
+
     CLASS-METHODS read_versions_program
       IMPORTING
         iv_prog_name     TYPE sy-repid
@@ -142,11 +149,17 @@ CLASS lcl_version_service IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
+  METHOD format_iso8601.
+    rv_result = iv_date+0(4) && '-' && iv_date+4(2) && '-' && iv_date+6(2) &&
+                'T' && iv_time+0(2) && ':' && iv_time+2(2) && ':' && iv_time+4(2).
+  ENDMETHOD.
+
   METHOD read_versions_program.
     DATA: ls_response  TYPE ty_response,
           lv_prog_name TYPE sy-repid,
           lv_count     TYPE i,
           lv_udat      TYPE reposrc-udat,
+          lv_utime     TYPE reposrc-utime,
           lv_versno    TYPE i,
           lv_visual    TYPE n LENGTH 5.
 
@@ -187,7 +200,7 @@ CLASS lcl_version_service IMPLEMENTATION.
       CLEAR ls_response.
       ls_response-id        = lv_visual.
       ls_response-title     = ls_dados-as4text.
-      ls_response-updated   = ls_dados-datum.
+      ls_response-updated   = format_iso8601( iv_date = ls_dados-datum iv_time = ls_dados-zeit ).
       ls_response-request   = ls_dados-korrnum.
       ls_response-file_name = lv_prog_name.
       ls_response-category  = iv_category.
@@ -195,9 +208,9 @@ CLASS lcl_version_service IMPLEMENTATION.
     ENDLOOP.
 
     " Ativo fica por cima, como 00000
-    SELECT SINGLE udat
+    SELECT SINGLE udat utime
       FROM reposrc
-      INTO lv_udat
+      INTO (lv_udat, lv_utime)
       WHERE progname = lv_prog_name
         AND r3state  = 'A'.
 
@@ -208,7 +221,7 @@ CLASS lcl_version_service IMPLEMENTATION.
       ls_response-file_name = lv_prog_name.
       ls_response-category  = iv_category.
       ls_response-request   = ''.
-      ls_response-updated   = lv_udat.
+      ls_response-updated   = format_iso8601( iv_date = lv_udat iv_time = lv_utime ).
       INSERT ls_response INTO rt_result INDEX 1.
     ENDIF.
 
