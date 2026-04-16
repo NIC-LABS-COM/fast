@@ -27,7 +27,7 @@ Sub CheckSapError(stepName)
     sbarText = session.findById("wnd[0]/sbar").Text
     On Error GoTo 0
     If sbarType = "E" Or sbarType = "A" Then
-        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+        session.findById("wnd[0]/tbar[0]/okcd").Text = "/n123"
         session.findById("wnd[0]").sendVKey 0
         WScript.StdErr.Write "SAP_ERROR: [" & stepName & "] " & sbarText
         WScript.Quit 1
@@ -79,10 +79,10 @@ WScript.Sleep 1000
 CheckSapError "Abrir report"
 
 ' ---- Preenche parametros do report ----
-session.findById("wnd[0]/usr/ctxtP_FILE-LOW").Text = argFileName
+session.findById("wnd[0]/usr/txtP_FILE-LOW").Text = argFileName
 
 If argCategory <> "" Then
-    session.findById("wnd[0]/usr/ctxtP_CAT-LOW").Text = argCategory
+    session.findById("wnd[0]/usr/txtP_CAT-LOW").Text = argCategory
 End If
 
 ' ---- Executa (F8) ----
@@ -110,7 +110,7 @@ For i = 1 To 10
 Next
 
 If Not fso.FileExists(filePath) Then
-    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n123"
     session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Arquivo nao encontrado apos execucao: " & filePath
     WScript.Quit 1
@@ -120,7 +120,7 @@ End If
 On Error Resume Next
 Set fRead = fso.OpenTextFile(filePath, 1, False)
 If Err.Number <> 0 Then
-    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n123"
     session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Erro ao abrir arquivo: " & filePath & " | " & Err.Description
     WScript.Quit 1
@@ -131,14 +131,14 @@ conteudo = fRead.ReadAll
 fRead.Close
 
 If Trim(conteudo) = "" Then
-    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+    session.findById("wnd[0]/tbar[0]/okcd").Text = "/n123"
     session.findById("wnd[0]").sendVKey 0
     WScript.StdErr.Write "Arquivo encontrado mas esta vazio: " & filePath
     WScript.Quit 1
 End If
 
 ' Volta para tela inicial SAP
-session.findById("wnd[0]/tbar[0]/okcd").Text = "/n"
+session.findById("wnd[0]/tbar[0]/okcd").Text = "/n123"
 session.findById("wnd[0]").sendVKey 0
 
 conteudo = Replace(conteudo, vbCrLf, "\n")
