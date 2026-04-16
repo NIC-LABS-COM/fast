@@ -191,6 +191,7 @@ CLASS lcl_version_service IMPLEMENTATION.
     TYPES: BEGIN OF ty_join,
              versno  TYPE vrsd-versno,
              korrnum TYPE vrsd-korrnum,
+             strkorr TYPE e070-strkorr,
              datum   TYPE vrsd-datum,
              zeit    TYPE vrsd-zeit,
              as4text TYPE e07t-as4text,
@@ -209,11 +210,14 @@ CLASS lcl_version_service IMPLEMENTATION.
     "------------------------------------------------------------
     SELECT vrsd~versno,
            vrsd~korrnum,
+           e070~strkorr,
            vrsd~datum,
            vrsd~zeit,
            e07t~as4text
       INTO CORRESPONDING FIELDS OF TABLE @lt_dados
       FROM vrsd
+      LEFT OUTER JOIN e070
+        ON e070~trkorr = vrsd~korrnum
       LEFT OUTER JOIN e07t
         ON e07t~trkorr = vrsd~korrnum
        AND e07t~langu  = @sy-langu
@@ -237,7 +241,10 @@ CLASS lcl_version_service IMPLEMENTATION.
       ls_response-updated   = format_iso8601(
                                 iv_date = ls_dados-datum
                                 iv_time = ls_dados-zeit ).
-      ls_response-request   = ls_dados-korrnum.
+      ls_response-request   = COND string(
+                                WHEN ls_dados-strkorr IS NOT INITIAL
+                                THEN ls_dados-strkorr
+                                ELSE ls_dados-korrnum ).
       ls_response-file_name = lv_prog_name.
       ls_response-category  = category_to_label( iv_category ).
       APPEND ls_response TO rt_result.
@@ -294,12 +301,11 @@ CLASS lcl_version_service IMPLEMENTATION.
     ENDIF.
 
     "------------------------------------------------------------
-    " 4) Ordem final
-    "    00000 = Modificada
-    "    00001 = Ativa
-    "    00002+ = Históricas
+    " 4) Ordem final — decrescente por updated
+    "    Mais recente no topo (modificada/ativa primeiro,
+    "    depois históricas da mais nova à mais antiga)
     "------------------------------------------------------------
-    SORT rt_result BY id ASCENDING.
+    SORT rt_result BY updated DESCENDING.
 
   ENDMETHOD.
 
