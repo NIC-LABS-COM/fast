@@ -313,7 +313,7 @@ def process_query_file_category(channel, payload: dict, vbs_filename: str) -> No
         channel, payload, vbs_filename, [file_name], "query.file.category.v1")
     if not ok:
         return
-    raw_category = details.replace("\\n", "").strip().upper()
+    raw_category = details.replace("\\n", "").strip().strip('"').upper()
     category = _CATEGORY_MAP.get(raw_category, raw_category)
     log(f"[QUERY] SUCESSO: query.file.category.v1 - {file_name} = {raw_category} -> {category}")
     _publish_plain_text_response(channel, reply, category, cid)
