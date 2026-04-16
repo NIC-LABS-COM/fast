@@ -62,6 +62,12 @@ CLASS lcl_version_service DEFINITION FINAL.
       RETURNING
         VALUE(rv_result) TYPE string.
 
+    CLASS-METHODS category_to_label
+      IMPORTING
+        iv_category       TYPE char4
+      RETURNING
+        VALUE(rv_label)   TYPE string.
+
     CLASS-METHODS read_versions_program
       IMPORTING
         iv_prog_name     TYPE sy-repid
@@ -149,6 +155,24 @@ CLASS lcl_version_service IMPLEMENTATION.
     ENDCASE.
   ENDMETHOD.
 
+  METHOD category_to_label.
+    CASE iv_category.
+      WHEN 'PROG'. rv_label = 'Report'.
+      WHEN 'CLAS'. rv_label = 'Classe'.
+      WHEN 'ENHO'. rv_label = 'Enhancement'.
+      WHEN 'FUNC'. rv_label = 'Módulo de função'.
+      WHEN 'FUGR'. rv_label = 'Grupo de funções'.
+      WHEN 'INDX'. rv_label = 'Índice'.
+      WHEN 'INTF'. rv_label = 'Interface'.
+      WHEN 'TABL'. rv_label = 'Tabela'.
+      WHEN 'DDLS'. rv_label = 'CDS View'.
+      WHEN 'INCL'. rv_label = 'Include'.
+      WHEN 'DOMA'. rv_label = 'Domínio'.
+      WHEN 'DTEL'. rv_label = 'Elemento de dados'.
+      WHEN OTHERS. rv_label = iv_category.
+    ENDCASE.
+  ENDMETHOD.
+
   METHOD format_iso8601.
     rv_result = iv_date+0(4) && '-' && iv_date+4(2) && '-' && iv_date+6(2) &&
                 'T' && iv_time+0(2) && ':' && iv_time+2(2) && ':' && iv_time+4(2).
@@ -203,7 +227,7 @@ CLASS lcl_version_service IMPLEMENTATION.
       ls_response-updated   = format_iso8601( iv_date = ls_dados-datum iv_time = ls_dados-zeit ).
       ls_response-request   = ls_dados-korrnum.
       ls_response-file_name = lv_prog_name.
-      ls_response-category  = iv_category.
+      ls_response-category  = category_to_label( iv_category ).
       APPEND ls_response TO rt_result.
     ENDLOOP.
 
@@ -219,7 +243,7 @@ CLASS lcl_version_service IMPLEMENTATION.
       ls_response-id        = '00000'.
       ls_response-title     = 'Versão ativa'.
       ls_response-file_name = lv_prog_name.
-      ls_response-category  = iv_category.
+      ls_response-category  = category_to_label( iv_category ).
       ls_response-request   = ''.
       ls_response-updated   = format_iso8601( iv_date = lv_udat iv_time = lv_utime ).
       INSERT ls_response INTO rt_result INDEX 1.
