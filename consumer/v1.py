@@ -265,6 +265,43 @@ def process_query_versions_metadata(channel, payload: dict, vbs_filename: str) -
     publish_query_response(channel, reply, data, cid)
 
 
+# Mapeamento de categoria SAP (ingles) → portugues (compativel com AbapCategory do back)
+_CATEGORY_MAP: dict[str, str] = {
+    "PROGRAM": "Report",
+    "REPS":    "Report",
+    "TABL":    "Tabela",
+    "INDX":    "Índice",
+    "DOMA":    "Domínio",
+    "ENHO":    "Enhancement",
+    "CLAS":    "Classe",
+    "FUGR":    "Grupo de funções",
+    "PROG":    "Include",
+    "FUNC":    "Módulo de função",
+    "DTEL":    "Elemento de dados",
+    "INTF":    "Interface",
+    "DDLS":    "CDS View",
+}
+
+
+def _publish_plain_text_response(channel, reply_to: str, text: str,
+                                 correlation_id: str = "") -> None:
+    """Publica resposta como texto puro (sem json.dumps) para evitar aspas extras."""
+    try:
+        props = pika.BasicProperties(
+            delivery_mode=2,
+            correlation_id=correlation_id if correlation_id else None,
+            content_type="text/plain",
+        )
+        channel.basic_publish(
+            exchange="", routing_key=reply_to,
+            body=text.encode("utf-8"),
+            properties=props,
+        )
+        log(f"Resposta PLAIN publicada em '{reply_to}': {text}")
+    except Exception:
+        log(f"Erro ao publicar resposta PLAIN: {traceback.format_exc()}")
+
+
 def process_query_file_category(channel, payload: dict, vbs_filename: str) -> None:
     file_name = payload.get("fileName", "").strip().upper()
     if not file_name:
@@ -276,9 +313,10 @@ def process_query_file_category(channel, payload: dict, vbs_filename: str) -> No
         channel, payload, vbs_filename, [file_name], "query.file.category.v1")
     if not ok:
         return
-    category = details.replace("\\n", "").strip()
-    log(f"[QUERY] SUCESSO: query.file.category.v1 - {file_name} = {category}")
-    publish_string_response(channel, reply, category, cid)
+    raw_category = details.replace("\\n", "").strip().upper()
+    category = _CATEGORY_MAP.get(raw_category, raw_category)
+    log(f"[QUERY] SUCESSO: query.file.category.v1 - {file_name} = {raw_category} -> {category}")
+    _publish_plain_text_response(channel, reply, category, cid)
 
 
 def process_query_request_files(channel, payload: dict, vbs_filename: str) -> None:
