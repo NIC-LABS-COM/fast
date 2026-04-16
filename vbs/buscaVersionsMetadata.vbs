@@ -79,10 +79,10 @@ WScript.Sleep 1000
 CheckSapError "Abrir report"
 
 ' ---- Preenche parametros do report ----
-session.findById("wnd[0]/usr/txtP_FILE-LOW").Text = argFileName
+session.findById("wnd[0]/usr/ctxtP_FILE-LOW").Text = argFileName
 
 If argCategory <> "" Then
-    session.findById("wnd[0]/usr/txtP_CAT-LOW").Text = argCategory
+    session.findById("wnd[0]/usr/ctxtP_CAT-LOW").Text = argCategory
 End If
 
 ' ---- Executa (F8) ----
