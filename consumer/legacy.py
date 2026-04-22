@@ -81,8 +81,6 @@ def process_legacy_message(channel, body_str: str) -> None:
 
 
 def callback_legacy(ch, _method, _properties, body):
+    """Callback do legado. Exceções propagam para retry decorator."""
     body_str = body.decode("utf-8")
-    try:
-        process_legacy_message(ch, body_str)
-    except Exception:
-        log(f"Erro nao tratado (legado): {traceback.format_exc()}")
+    process_legacy_message(ch, body_str)

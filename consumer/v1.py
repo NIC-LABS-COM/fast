@@ -478,7 +478,11 @@ def process_v1_event(channel, payload: dict, routing_key: str, vbs_filename: str
 #  Callback principal v1
 # ------------------------------------------------------------------ #
 def callback_v1(ch, method, properties, body):
-    """Callback das filas v1 — roteia pelo header amqp_receivedRoutingKey."""
+    """Callback das filas v1 — roteia pelo header amqp_receivedRoutingKey.
+
+    Exceções não tratadas propagam para o decorator with_retry_and_ack,
+    que controla retry e envio para DLQ.
+    """
     headers     = getattr(properties, "headers", None) or {}
     received_rk = headers.get("amqp_receivedRoutingKey", "") or method.routing_key or ""
     body_str    = body.decode("utf-8")
@@ -535,30 +539,27 @@ def callback_v1(ch, method, properties, body):
         log(f"[V1] Comando '{command}' nao mapeado em VBS_BY_ROUTING_KEY. Ignorado.")
         return
 
-    try:
-        if command == "query.read.file.v1":
-            process_query_read_file(ch, payload, vbs_filename)
-        elif command == "query.requests.v1":
-            process_query_requests(ch, payload, vbs_filename)
-        elif command == "query.all.files.v1":
-            process_query_all_files(ch, payload, vbs_filename)
-        elif command == "query.all.packages.v1":
-            process_query_all_packages(ch, payload, vbs_filename)
-        elif command == "query.versions.metadata.v1":
-            process_query_versions_metadata(ch, payload, vbs_filename)
-        elif command == "query.file.category.v1":
-            process_query_file_category(ch, payload, vbs_filename)
-        elif command == "query.request.files.v1":
-            process_query_request_files(ch, payload, vbs_filename)
-        elif command == "query.request.description.v1":
-            process_query_request_description(ch, payload, vbs_filename)
-        elif command == "query.read.from.version.v1":
-            process_query_read_from_version(ch, payload, vbs_filename)
-        elif command == "query.search.v1":
-            process_query_search(ch, payload, vbs_filename)
-        elif command in QUERY_ROUTING_KEYS:
-            log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
-        else:
-            process_v1_event(ch, payload, command, vbs_filename)
-    except Exception:
-        log(f"Erro nao tratado (v1): {traceback.format_exc()}")
+    if command == "query.read.file.v1":
+        process_query_read_file(ch, payload, vbs_filename)
+    elif command == "query.requests.v1":
+        process_query_requests(ch, payload, vbs_filename)
+    elif command == "query.all.files.v1":
+        process_query_all_files(ch, payload, vbs_filename)
+    elif command == "query.all.packages.v1":
+        process_query_all_packages(ch, payload, vbs_filename)
+    elif command == "query.versions.metadata.v1":
+        process_query_versions_metadata(ch, payload, vbs_filename)
+    elif command == "query.file.category.v1":
+        process_query_file_category(ch, payload, vbs_filename)
+    elif command == "query.request.files.v1":
+        process_query_request_files(ch, payload, vbs_filename)
+    elif command == "query.request.description.v1":
+        process_query_request_description(ch, payload, vbs_filename)
+    elif command == "query.read.from.version.v1":
+        process_query_read_from_version(ch, payload, vbs_filename)
+    elif command == "query.search.v1":
+        process_query_search(ch, payload, vbs_filename)
+    elif command in QUERY_ROUTING_KEYS:
+        log(f"[V1] Query '{command}' sem handler dedicado. Ignorado.")
+    else:
+        process_v1_event(ch, payload, command, vbs_filename)

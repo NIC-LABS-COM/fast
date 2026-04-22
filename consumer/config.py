@@ -7,7 +7,10 @@ from pathlib import Path
 
 # Carrega .env da raiz do projeto
 # Use ENV_FILE=.env.dev para apontar para o ambiente de dev
-_project_root = Path(__file__).resolve().parent.parent
+if getattr(sys, "frozen", False):
+    _project_root = Path(sys._MEIPASS)
+else:
+    _project_root = Path(__file__).resolve().parent.parent
 _env_file = os.environ.get("ENV_FILE", ".env")
 _env_path = _project_root / _env_file
 if _env_path.exists():
@@ -42,6 +45,22 @@ QUEUES_V1 = [QUEUE_V1]
 # Exchange — nova arquitetura
 EXCHANGE_V1      = "x.to-client.topic"
 ROUTING_KEY_BIND = "usiminas.req.#.v1"
+
+# ------------------------------------------------------------------ #
+#  Dead Letter Exchange / Queue (equivalente ao RabbitMQConfig Spring)
+# ------------------------------------------------------------------ #
+DEAD_LETTER_EXCHANGE = "x.to-client.dlx"
+
+# DLQ names derivadas das filas principais
+QUEUE_V1_DLQ = f"{QUEUE_V1}.dlq"
+
+# ------------------------------------------------------------------ #
+#  Retry e Reconexão
+# ------------------------------------------------------------------ #
+MAX_RETRY_ATTEMPTS       = int(os.environ.get("MAX_RETRY_ATTEMPTS", "3"))
+RETRY_BACKOFF_SECONDS    = float(os.environ.get("RETRY_BACKOFF_SECONDS", "2"))
+MAX_RECONNECT_ATTEMPTS   = int(os.environ.get("MAX_RECONNECT_ATTEMPTS", "10"))
+RECONNECT_BACKOFF_SECONDS = float(os.environ.get("RECONNECT_BACKOFF_SECONDS", "5"))
 
 # Diretório local com os scripts VBS empacotados junto ao executável
 def _get_vbs_dir() -> str:

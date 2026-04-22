@@ -3,7 +3,6 @@ __pycache__/
 *.pyc
 *.pyo
 build/
-dist/*
 !dist/ConsumerTT.exe
 *.spec
 front/log
