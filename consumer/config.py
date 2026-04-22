@@ -25,7 +25,7 @@ BROKERS = [
         "host":     "rabbitmq.dev.nic-labs.com",
         "port":     5671,
         "user":     "dev_nicaiuser",
-        "password": "Mle2npM65vTuojNpb&Q0D$CJmFxR6$s",
+        "password": "Mle2*npM65vTuojNpb&Q0D$CJmFxR6$s",
         "vhost":    "/",
         "timeout":  150000,
     },
