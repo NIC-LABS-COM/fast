@@ -5,32 +5,43 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Carrega .env da raiz do projeto
-# Use ENV_FILE=.env.dev para apontar para o ambiente de dev
-if getattr(sys, "frozen", False):
-    _project_root = Path(sys._MEIPASS)
-else:
-    _project_root = Path(__file__).resolve().parent.parent
-_env_file = os.environ.get("ENV_FILE", ".env")
-_env_path = _project_root / _env_file
-if _env_path.exists():
-    with open(_env_path) as _f:
-        for _line in _f:
-            _line = _line.strip()
-            if _line and not _line.startswith("#") and "=" in _line:
-                _key, _val = _line.split("=", 1)
-                _val = _val.strip().strip('"').strip("'")
-                os.environ[_key.strip()] = _val  # sobrescreve para respeitar o arquivo escolhido
+# ------------------------------------------------------------------ #
+#  Configuracao RabbitMQ — Multi-broker
+#  O consumer conecta em todos os brokers simultaneamente.
+#  As respostas voltam pelo mesmo broker (via replyTo / canal).
+# ------------------------------------------------------------------ #
+BROKERS = [
+    {
+        "name":     "PROD",
+        "host":     "rabbitmq.nic-labs.com",
+        "port":     5671,
+        "user":     "nicaiuser",
+        "password": "USOYl8SM*L1P3iOXs@f3$oYLwdOA6xJv",
+        "vhost":    "/",
+        "timeout":  150000,
+    },
+    {
+        "name":     "DEV",
+        "host":     "rabbitmq.dev.nic-labs.com",
+        "port":     5671,
+        "user":     "dev_nicaiuser",
+        "password": "Mle2npM65vTuojNpb&Q0D$CJmFxR6$s",
+        "vhost":    "/",
+        "timeout":  150000,
+    },
+    {
+        "name":     "HOM",
+        "host":     "rabbitmq.hom.nic-labs.com",
+        "port":     5671,
+        "user":     "hom_nicaiuser",
+        "password": "D4X@No$wAtQj3zK7mml8175XYBcwp5t4",
+        "vhost":    "/",
+        "timeout":  150000,
+    },
+]
 
-# ------------------------------------------------------------------ #
-#  Configuracao RabbitMQ
-# ------------------------------------------------------------------ #
-BROKER_HOST     = os.environ.get("BROKER_HOST",     "rabbitmq.nic-labs.com")
-BROKER_PORT     = int(os.environ.get("BROKER_PORT", "5671"))
-BROKER_USER     = os.environ.get("BROKER_USER",     "nicaiuser")
-BROKER_PASSWORD = os.environ.get("BROKER_PASSWORD", "USOYl8SM*L1P3iOXs@f3$oYLwdOA6xJv")
-BROKER_VHOST    = os.environ.get("BROKER_VHOST",    "/")
-BROKER_TIMEOUT  = int(os.environ.get("BROKER_TIMEOUT", "150000"))
+# Compat — usado pelo legado e logs
+BROKER_HOST = BROKERS[0]["host"]
 
 # Filas — legado
 QUEUE_COMMANDS  = "queue_vpn_usiminas"

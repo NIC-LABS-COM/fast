@@ -1,7 +1,11 @@
 """
 ConsumerTT — Consumer RabbitMQ para automacao SAP GUI.
 
-Escuta duas filas em paralelo:
+Conecta simultaneamente a multiplos brokers (PROD, DEV, HOM) via threads.
+Cada broker tem sua propria conexão, canal e loop de reconexão.
+As respostas voltam pelo mesmo canal/broker (via replyTo).
+
+Escuta duas filas em paralelo por broker:
   1. queue_vpn_usiminas  — arquitetura legada (payload com action/vbs_url/args)
   2. q.usiminas.v1       — arquitetura orientada a eventos (routing key + payload tipado)
 
@@ -14,13 +18,14 @@ Resiliência:
 
 import os
 import time
+import threading
 import traceback
 
 import pika
 
 from .config import (
     QUEUE_COMMANDS, QUEUE_RESPONSES, QUEUES_V1,
-    EXCHANGE_V1, ROUTING_KEY_BIND, BROKER_HOST,
+    EXCHANGE_V1, ROUTING_KEY_BIND, BROKERS,
     VBS_DIR, VBS_BY_ROUTING_KEY,
     DEAD_LETTER_EXCHANGE, QUEUE_V1_DLQ,
     MAX_RETRY_ATTEMPTS, RETRY_BACKOFF_SECONDS,
@@ -128,7 +133,7 @@ def _declare_v1_queue(connection, channel, queue: str):
         raise
 
 
-def _setup_channel(connection):
+def _setup_channel(connection, broker_name: str):
     """Configura canal com toda a infraestrutura de filas, exchanges e bindings."""
     channel = connection.channel()
 
@@ -144,7 +149,7 @@ def _setup_channel(connection):
         exchange=EXCHANGE_V1, exchange_type="topic",
         durable=True, auto_delete=False,
     )
-    log(f"Exchange declarado/verificado: {EXCHANGE_V1} "
+    log(f"[{broker_name}] Exchange declarado/verificado: {EXCHANGE_V1} "
         f"(topic, durable, auto_delete=False)")
 
     # 4. Filas V1 com DLQ args + binding
@@ -155,17 +160,13 @@ def _setup_channel(connection):
             exchange=EXCHANGE_V1,
             routing_key=ROUTING_KEY_BIND,
         )
-        log(f"Binding registrado: {EXCHANGE_V1} -> {queue} "
+        log(f"[{broker_name}] Binding registrado: {EXCHANGE_V1} -> {queue} "
             f"[{ROUTING_KEY_BIND}]")
 
     # 5. QoS — processa uma mensagem por vez
     channel.basic_qos(prefetch_count=1)
 
     # 6. Callbacks com retry + manual ack/nack
-    #    Equivalente ao rawJsonListenerContainerFactory do Spring com:
-    #      - defaultRequeueRejected=false
-    #      - RetryInterceptorBuilder.maxRetries(3)
-    #      - RejectAndDontRequeueRecoverer
     safe_callback_v1 = with_retry_and_ack()(callback_v1)
     safe_callback_legacy = with_retry_and_ack()(callback_legacy)
 
@@ -182,40 +183,26 @@ def _setup_channel(connection):
         auto_ack=False,
     )
 
-    log(f"Escutando filas: '{QUEUE_COMMANDS}' e "
+    log(f"[{broker_name}] Escutando filas: '{QUEUE_COMMANDS}' e "
         f"'{', '.join(QUEUES_V1)}' (auto_ack=False, "
         f"max_retries={MAX_RETRY_ATTEMPTS})")
     return channel
 
 
-def main() -> None:
-    log("##################################################")
-    log("CONSUMER INICIADO")
-    log(f"Fila legado   : {QUEUE_COMMANDS}")
-    log(f"Filas v1      : {', '.join(QUEUES_V1)}")
-    log(f"Exchange v1   : {EXCHANGE_V1}")
-    log(f"Binding v1    : {ROUTING_KEY_BIND}")
-    log(f"Fila respostas: {QUEUE_RESPONSES}")
-    log(f"Host          : {BROKER_HOST}")
-    log(f"DLX           : {DEAD_LETTER_EXCHANGE}")
-    log(f"DLQ v1        : {QUEUE_V1_DLQ}")
-    log(f"Max retries   : {MAX_RETRY_ATTEMPTS}")
-    log(f"Retry backoff : {RETRY_BACKOFF_SECONDS}s (linear)")
-    log("##################################################")
-    _check_vbs_files()
-    log("##################################################")
+def _broker_loop(broker: dict) -> None:
+    """Loop de reconexão para um único broker. Roda em thread própria."""
+    name = broker.get("name", broker["host"])
 
-    # Loop de reconexão — garante que o consumer sobrevive a quedas de conexão
     while True:
         connection = None
         try:
-            connection = get_rabbitmq_connection()
-            channel = _setup_channel(connection)
-            print(f"Aguardando mensagens... (CTRL+C para sair)")
+            connection = get_rabbitmq_connection(broker)
+            channel = _setup_channel(connection, name)
+            log(f"[{name}] Aguardando mensagens...")
             channel.start_consuming()
 
         except KeyboardInterrupt:
-            log("Consumer encerrado pelo usuario.")
+            log(f"[{name}] Consumer encerrado pelo usuario.")
             try:
                 channel.stop_consuming()
             except Exception:
@@ -223,9 +210,10 @@ def main() -> None:
             break
 
         except Exception as exc:
-            log(f"[CONN] Erro no consumo: {exc}")
-            log(f"[CONN] {traceback.format_exc()}")
-            log(f"[CONN] Reconectando em {_RECONNECT_DELAY}s...")
+            log(f"[CONN][{name}] Erro no consumo: {type(exc).__name__}: {exc}")
+            log(f"[CONN][{name}] Stacktrace:\n{traceback.format_exc()}")
+            log(f"[CONN][{name}] A thread vai tentar reconectar em {_RECONNECT_DELAY}s... "
+                f"(as outras threads nao sao afetadas)")
             time.sleep(_RECONNECT_DELAY)
 
         finally:
@@ -234,7 +222,47 @@ def main() -> None:
                     connection.close()
                 except Exception:
                     pass
-                log("Conexao encerrada.")
+                log(f"[{name}] Conexao encerrada.")
+
+
+def main() -> None:
+    log("##################################################")
+    log("CONSUMER INICIADO — MULTI-BROKER")
+    log(f"Brokers       : {', '.join(b['name'] for b in BROKERS)}")
+    log(f"Fila legado   : {QUEUE_COMMANDS}")
+    log(f"Filas v1      : {', '.join(QUEUES_V1)}")
+    log(f"Exchange v1   : {EXCHANGE_V1}")
+    log(f"Binding v1    : {ROUTING_KEY_BIND}")
+    log(f"Fila respostas: {QUEUE_RESPONSES}")
+    log(f"DLX           : {DEAD_LETTER_EXCHANGE}")
+    log(f"DLQ v1        : {QUEUE_V1_DLQ}")
+    log(f"Max retries   : {MAX_RETRY_ATTEMPTS}")
+    log(f"Retry backoff : {RETRY_BACKOFF_SECONDS}s (linear)")
+    for b in BROKERS:
+        log(f"  [{b['name']}] {b['host']}:{b['port']}")
+    log("##################################################")
+    _check_vbs_files()
+    log("##################################################")
+
+    # Uma thread por broker — cada uma com seu loop de reconexão
+    threads = []
+    for broker in BROKERS:
+        t = threading.Thread(
+            target=_broker_loop,
+            args=(broker,),
+            name=f"consumer-{broker['name']}",
+            daemon=True,
+        )
+        t.start()
+        threads.append(t)
+        log(f"Thread iniciada para broker [{broker['name']}]")
+
+    # Aguarda todas as threads (Ctrl+C encerra via daemon=True)
+    try:
+        for t in threads:
+            t.join()
+    except KeyboardInterrupt:
+        log("Consumer encerrado pelo usuario (Ctrl+C).")
 
     log("Consumer finalizado.")
 
