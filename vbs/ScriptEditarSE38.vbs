@@ -164,6 +164,7 @@ CheckSapError "Salvar programa"
 
 session.findById("wnd[0]").sendVKey 27
 Pause 1.5
+session.findById("wnd[1]").sendVKey 0
 CheckActivationPopup "Ativar programa"
 CheckSapError "Ativar programa"
 
