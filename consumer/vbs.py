@@ -34,7 +34,7 @@ def execute_vbs(vbs_path: str, args: list[str]) -> tuple[bool, str]:
     for arg in args:
         if len(arg) > _MAX_ARG_LEN:
             tf = tempfile.NamedTemporaryFile(
-                mode="w", suffix=".txt", delete=False, encoding="utf-8"
+                mode="w", suffix=".txt", delete=False, encoding="utf-16"
             )
             tf.write(arg)
             tf.close()
