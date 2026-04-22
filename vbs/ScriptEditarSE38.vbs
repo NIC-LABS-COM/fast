@@ -102,6 +102,24 @@ Function NormalizeLineBreaks(text)
     NormalizeLineBreaks = text
 End Function
 
+Function ReadFromFileIfNeeded(arg)
+    ' Se o argumento comeca com @ e o arquivo de conteudo grande
+    If Left(arg, 1) = "@" Then
+        Dim filePath, fso, ts
+        filePath = Mid(arg, 2)
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        If fso.FileExists(filePath) Then
+            Set ts = fso.OpenTextFile(filePath, 1, False, -1) ' TristateTrueUnicode
+            ReadFromFileIfNeeded = ts.ReadAll
+            ts.Close
+        Else
+            ReadFromFileIfNeeded = arg
+        End If
+    Else
+        ReadFromFileIfNeeded = arg
+    End If
+End Function
+
 If Not IsObject(application) Then
     Set SapGuiAuto = GetObject("SAPGUI")
     Set application = SapGuiAuto.GetScriptingEngine
@@ -123,7 +141,7 @@ If WScript.Arguments.Count >= 1 Then
 End If
 
 If WScript.Arguments.Count >= 2 Then
-    codigo = CStr(WScript.Arguments(1))
+    codigo = ReadFromFileIfNeeded(CStr(WScript.Arguments(1)))
 End If
 
 If programName = "" Then
@@ -170,5 +188,6 @@ CheckSapError "Ativar programa"
 
 WScript.Echo "Programa " & programName & " editado com sucesso."
 
-session.findById("wnd[0]").sendVKey 3
-session.findById("wnd[0]").sendVKey 3
+' Volta para a tela inicial do SAP
+session.findById("wnd[0]/tbar[0]/okcd").text = "/n12365"
+session.findById("wnd[0]").sendVKey 0

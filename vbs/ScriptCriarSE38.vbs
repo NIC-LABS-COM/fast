@@ -105,6 +105,24 @@ Sub CheckActivationPopup(stepName)
     WScript.Quit 1
 End Sub
 
+Function ReadFromFileIfNeeded(arg)
+    ' Se o argumento comeca com @ e o arquivo de conteudo grande
+    If Left(arg, 1) = "@" Then
+        Dim filePath, fso, ts
+        filePath = Mid(arg, 2)
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        If fso.FileExists(filePath) Then
+            Set ts = fso.OpenTextFile(filePath, 1, False, -1) ' TristateTrueUnicode
+            ReadFromFileIfNeeded = ts.ReadAll
+            ts.Close
+        Else
+            ReadFromFileIfNeeded = arg
+        End If
+    Else
+        ReadFromFileIfNeeded = arg
+    End If
+End Function
+
 programName = "ZMM_TESTE_PARIMPAR"
 packageName = "$TMP"
 requestId = ""
@@ -137,7 +155,7 @@ End If
 
 If WScript.Arguments.Count >= 8 Then
    If Trim(CStr(WScript.Arguments(7))) <> "" Then
-      sourceCode = CStr(WScript.Arguments(7))
+      sourceCode = ReadFromFileIfNeeded(CStr(WScript.Arguments(7)))
    End If
 End If
 
